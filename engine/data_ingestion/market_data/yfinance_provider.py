@@ -20,11 +20,18 @@ from __future__ import annotations
 import logging
 import pandas as pd
 import yfinance as yf
+from curl_cffi import requests as cffi_requests
 from tenacity import retry, stop_after_attempt, wait_exponential
 
 from engine.config.settings import YFINANCE_SYMBOLS
 
 logger = logging.getLogger(__name__)
+
+# Yahoo Finance blockerar ofta trafik från molnservrar (t.ex. GitHub Actions)
+# som ser ut som vanliga script-anrop. Genom att låta yfinance använda en
+# curl_cffi-session som maskerar sig som en riktig webbläsare (Chrome)
+# kringgår vi den blockeringen. Sessionen återanvänds mellan anrop.
+_session = cffi_requests.Session(impersonate="chrome")
 
 # yfinance-intervall + max lookback-period som funkar i praktiken
 _INTERVAL_CONFIG = {
@@ -48,6 +55,7 @@ def _download(ticker: str, yf_interval: str, period: str) -> pd.DataFrame:
         progress=False,
         auto_adjust=False,
         multi_level_index=False,
+        session=_session,
     )
     if df is None or df.empty:
         raise MarketDataUnavailableError(f"Tom respons för {ticker} ({yf_interval}, {period})")

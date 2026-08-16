@@ -1,9 +1,13 @@
 name: Signal Cycle
 
+# Kör hela pipelinen: hämta marknadsdata -> teknisk analys -> signal -> paper trading.
+# GitHub Actions cron är UTC. Var 15:e minut, dygnet runt (guldmarknaden handlas
+# nästan dygnet runt, sön kväll - fre kväll). Gratis inom GitHub sina gränser
+# för schemalagda workflows.
 on:
   schedule:
     - cron: "*/15 * * * *"
-  workflow_dispatch: {}
+  workflow_dispatch: {}   # gör att du kan trigga manuellt från GitHub UI
 
 jobs:
   run-signal-cycle:
