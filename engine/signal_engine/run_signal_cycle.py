@@ -23,7 +23,7 @@ from engine.analysis.technical.engine import analyze as analyze_technical
 from engine.signal_engine.signal_engine import ScoreInputs, build_signal
 from engine.paper_trading.broker_interface import get_active_broker
 from engine.paper_trading.paper_trading import get_account_balance
-from engine.database.client import insert, log_run_start, log_run_finish
+from engine.database.client import insert, upsert, log_run_start, log_run_finish
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ def run() -> dict:
             log_run_finish(run_id, "FAILED", errors=[{"error": msg}], log_summary=msg)
             return {"status": "analysis_failed"}
 
-        insert("technical_snapshots", [snapshot])
+        upsert("technical_snapshots", [snapshot], on_conflict="symbol,timeframe,ts")
 
         # Fundamental/makro/nyheter är inte inkopplade ännu i denna version.
         # Markeras explicit som "missing" så signal_engine renormaliserar

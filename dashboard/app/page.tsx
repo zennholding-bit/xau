@@ -115,7 +115,7 @@ export default function DashboardPage() {
             {loading && <p className="text-neutral text-sm">Laddar...</p>}
             {!loading && latestSignals.length === 0 && (
               <p className="text-neutral text-sm">
-                Inga signaler ännu i vald period. GitHub Actions-jobbet körs var 15:e minut —
+                Inga signaler ännu i vald period. GitHub Actions-jobbet körs några gånger per dag —
                 vänta eller trigga det manuellt.
               </p>
             )}
