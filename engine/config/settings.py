@@ -16,6 +16,9 @@ class Settings(BaseSettings):
     # --- Makrodata ---
     FRED_API_KEY: str = ""
 
+    # --- Marknadsdata ---
+    TWELVE_DATA_API_KEY: str = ""
+
     # --- AI ---
     AI_PROVIDER: str = "none"  # none | openai | ollama
     OPENAI_API_KEY: str = ""
@@ -36,6 +39,8 @@ class Settings(BaseSettings):
         warnings = []
         if not self.SUPABASE_URL or not self.SUPABASE_SERVICE_ROLE_KEY:
             warnings.append("SUPABASE_URL / SUPABASE_SERVICE_ROLE_KEY saknas - databas kan inte nås.")
+        if not self.TWELVE_DATA_API_KEY:
+            warnings.append("TWELVE_DATA_API_KEY saknas - marknadsdata kan inte hämtas.")
         if not self.FRED_API_KEY:
             warnings.append("FRED_API_KEY saknas - makrodata (CPI, NFP, etc) kan inte hämtas.")
         if self.AI_PROVIDER == "openai" and not self.OPENAI_API_KEY:

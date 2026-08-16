@@ -8,13 +8,13 @@ fel loggas till system_runs.
 import logging
 import pandas as pd
 
-from engine.data_ingestion.market_data.stooq_provider import fetch_ohlcv, STOOQ_SYMBOLS
+from engine.data_ingestion.market_data.twelvedata_provider import fetch_ohlcv, TWELVEDATA_SYMBOLS
 from engine.database.client import upsert, log_run_start, log_run_finish
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-# v1 kör endast på dagsdata (se stooq_provider.py-docstringen för varför)
+# v1 kör endast på dagsdata (se twelvedata_provider.py-docstringen för varför)
 TIMEFRAMES = ["1d"]
 
 
@@ -34,7 +34,7 @@ def rows_from_df(symbol: str, timeframe: str, df: pd.DataFrame) -> list[dict]:
             "low": float(r["low"]),
             "close": float(r["close"]),
             "volume": float(r["volume"]) if pd.notna(r.get("volume")) else None,
-            "source": "stooq",
+            "source": "twelvedata",
             "quality_score": 1.0,
         })
     return rows
@@ -45,7 +45,7 @@ def main() -> None:
     total = 0
     errors = []
 
-    for symbol in STOOQ_SYMBOLS:
+    for symbol in TWELVEDATA_SYMBOLS:
         for tf in TIMEFRAMES:
             try:
                 df = fetch_ohlcv(symbol, tf)

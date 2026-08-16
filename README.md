@@ -162,10 +162,13 @@ pytest tests/ -v
 | Nyckel | Krävs för | Var du skaffar den | Gratis? |
 |---|---|---|---|
 | Supabase URL + service_role key | Hela databasen | https://supabase.com | Ja (free tier) |
+| `TWELVE_DATA_API_KEY` | **Marknadsdata (XAU/USD, etc) - obligatorisk** | https://twelvedata.com/pricing (Basic/Free) | Ja (800 anrop/dag) |
 | `FRED_API_KEY` | Makrodata (CPI, NFP, etc) - **byggs i nästa steg** | https://fred.stlouisfed.org/docs/api/api_key.html | Ja |
 | `OPENAI_API_KEY` (valfritt) | AI-analys av nyheter - **byggs senare, du valde regelbaserat först** | https://platform.openai.com | Nej, kostar per anrop |
 
-Marknadsdata (yfinance) kräver ingen nyckel alls.
+Marknadsdata krävde tidigare ingen nyckel (yfinance/Stooq), men båda dessa
+gratis "scraping"-källor visade sig blockera trafik från GitHub Actions med
+bot-skydd. Twelve Data är en riktig API och kräver därför en (gratis) nyckel.
 
 ---
 

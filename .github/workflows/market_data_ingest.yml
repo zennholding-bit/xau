@@ -1,7 +1,7 @@
 name: Market Data Ingest
 
-# Hämtar historik för alla symboler (Stooq, dagsdata). Körs en gång per dag -
-# ny data publiceras ändå bara en gång per handelsdag.
+# Hämtar historik för alla symboler (Twelve Data, dagsdata). Körs en gång per
+# dag - ny data publiceras ändå bara en gång per handelsdag.
 on:
   schedule:
     - cron: "0 6 * * *"
@@ -26,4 +26,5 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
         run: python -m engine.data_ingestion.market_data.run_ingest
