@@ -45,25 +45,5 @@ class Settings(BaseSettings):
 
 settings = Settings()
 
-# Symbols som hämtas via yfinance för marknadsdata + cross-market kontext
-YFINANCE_SYMBOLS = {
-    "XAUUSD": "GC=F",       # Gold futures (bra gratis proxy för spot)
-    "DXY": "DX-Y.NYB",      # US Dollar Index
-    "US10Y": "^TNX",        # 10Y Treasury yield (x10)
-    "US2Y": "^IRX",         # kort ränta - approximation (13-week T-bill)
-    "WTI": "CL=F",          # WTI Crude
-    "BRENT": "BZ=F",        # Brent Crude
-    "SPX": "^GSPC",         # S&P 500
-    "NDX": "^NDX",          # Nasdaq 100
-    "VIX": "^VIX",
-    "EURUSD": "EURUSD=X",
-    "USDJPY": "JPY=X",
-}
-
-TIMEFRAME_TO_INTERVAL = {
-    "5m": "5m",
-    "15m": "15m",
-    "1h": "60m",
-    "4h": "60m",   # yfinance saknar 4h nativt - vi resamplar från 1h
-    "1d": "1d",
-}
+# Symbols som hämtas via Stooq - se engine/data_ingestion/market_data/stooq_provider.py
+# (filnamnet är historiskt, innehållet hämtar numera från Stooq)

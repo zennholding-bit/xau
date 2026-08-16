@@ -1,10 +1,10 @@
 name: Market Data Ingest
 
-# Hämtar bredare historik för alla symboler/timeframes (inte bara de som
-# behövs för själva signalen). Körs mer sällan än signal-cykeln.
+# Hämtar historik för alla symboler (Stooq, dagsdata). Körs en gång per dag -
+# ny data publiceras ändå bara en gång per handelsdag.
 on:
   schedule:
-    - cron: "0 * * * *"   # varje timme
+    - cron: "0 6 * * *"
   workflow_dispatch: {}
 
 jobs:

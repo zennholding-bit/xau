@@ -18,7 +18,7 @@ import uuid
 from datetime import datetime, timezone
 
 from engine.config.settings import settings
-from engine.data_ingestion.market_data.yfinance_provider import fetch_ohlcv
+from engine.data_ingestion.market_data.stooq_provider import fetch_ohlcv
 from engine.analysis.technical.engine import analyze as analyze_technical
 from engine.signal_engine.signal_engine import ScoreInputs, build_signal
 from engine.paper_trading.broker_interface import get_active_broker
@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 SYMBOL = settings.PRIMARY_SYMBOL  # "XAUUSD"
-ANALYSIS_TIMEFRAME = "1h"  # signalgenerering körs på 1h-chart i v1
+ANALYSIS_TIMEFRAME = "1d"  # v1 kör på dagsdata via Stooq (se stooq_provider.py för varför)
 
 
 def _generate_signal_uid() -> str:
