@@ -53,19 +53,28 @@ class MarketDataUnavailableError(Exception):
     pass
 
 
-@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8))
+@retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=2, max=8), reraise=True)
 def _download_stooq(ticker: str) -> pd.DataFrame:
     url = f"https://stooq.com/q/d/l/?s={ticker}&i=d"
     resp = requests.get(url, timeout=15, headers={"User-Agent": "Mozilla/5.0"})
-    resp.raise_for_status()
+
+    if resp.status_code != 200:
+        raise MarketDataUnavailableError(
+            f"Stooq HTTP {resp.status_code} för {ticker}. Svar: {resp.text[:200]!r}"
+        )
 
     text = resp.text.strip()
     if not text or text.lower().startswith("no data") or "," not in text.splitlines()[0]:
-        raise MarketDataUnavailableError(f"Stooq gav ingen giltig data för {ticker}")
+        raise MarketDataUnavailableError(
+            f"Stooq gav ogiltig data för {ticker}. HTTP {resp.status_code}. "
+            f"Svar (första 200 tecken): {text[:200]!r}"
+        )
 
     df = pd.read_csv(io.StringIO(text))
     if df.empty or "Date" not in df.columns:
-        raise MarketDataUnavailableError(f"Tom/ogiltig CSV från Stooq för {ticker}")
+        raise MarketDataUnavailableError(
+            f"Tom/ogiltig CSV från Stooq för {ticker}. Svar: {text[:200]!r}"
+        )
     return df
 
 
