@@ -1,11 +1,12 @@
 name: Signal Cycle
 
 # Kör hela pipelinen: hämta marknadsdata -> teknisk analys -> signal -> paper trading.
-# GitHub Actions cron är UTC. v1 använder dagsdata (Stooq), så körning ett par
-# gånger per dag räcker - ny data finns ändå bara en gång per handelsdag.
+# GitHub Actions cron är UTC. Var 5:e minut - snabbaste intervall GitHub Actions
+# tillåter för schemalagda jobb. XAU/USD analyseras på 5-minuters candles via
+# Twelve Data (fungerar på free tier, ~288 anrop/dag av 800 tillåtna).
 on:
   schedule:
-    - cron: "0 7,12,17,21 * * *"
+    - cron: "*/5 * * * *"
   workflow_dispatch: {}   # gör att du kan trigga manuellt från GitHub UI
 
 jobs:

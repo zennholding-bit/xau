@@ -29,7 +29,7 @@ logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(mess
 logger = logging.getLogger(__name__)
 
 SYMBOL = settings.PRIMARY_SYMBOL  # "XAUUSD"
-ANALYSIS_TIMEFRAME = "1d"  # v1 kör på dagsdata via Twelve Data (se twelvedata_provider.py för varför)
+ANALYSIS_TIMEFRAME = "5m"  # tätast möjliga gratis-frekvens (GitHub Actions minimum + Twelve Data free tier)
 
 
 def _generate_signal_uid() -> str:

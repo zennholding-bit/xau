@@ -14,9 +14,11 @@ en gång per dag-körning av detta system.
 Skaffa gratis API-nyckel: https://twelvedata.com/pricing (Basic/Free-planen)
 Lägg in som TWELVE_DATA_API_KEY i .env / GitHub Secrets.
 
-BEGRÄNSNING v1: gratis-nivån ger dagsdata (1day) pålitligt. Vissa symboler
-(t.ex. amerikanska räntor) stöds inte av Twelve Datas free tier och hoppas
-över med tydlig loggning - resten av systemet är byggt för att tåla detta.
+BEGRÄNSNING v1: Twelve Data free tier stödjer intradagsdata (15min, 1h, 4h)
+för huvudsymbolen XAU/USD - används av signal_cycle för täta uppdateringar.
+Övriga cross-market-symboler hämtas bara som dagsdata (mindre kritiskt,
+används bara som kontext). Vissa instrument (t.ex. amerikanska räntor)
+stöds inte av Twelve Datas free tier och hoppas över med tydlig loggning.
 
 Designad som ett interface (duck-typed) så den senare kan bytas mot en
 premiumleverantör utan att signalmotorn behöver ändras. Alla providers
@@ -50,7 +52,15 @@ TWELVEDATA_SYMBOLS = {
     "USDJPY": "USD/JPY",
 }
 
-SUPPORTED_TIMEFRAMES = {"1d"}
+# Mappning till Twelve Datas eget intervallformat
+TIMEFRAME_TO_TD_INTERVAL = {
+    "5m": "5min",
+    "15m": "15min",
+    "1h": "1h",
+    "4h": "4h",
+    "1d": "1day",
+}
+SUPPORTED_TIMEFRAMES = set(TIMEFRAME_TO_TD_INTERVAL.keys())
 
 _MIN_SECONDS_BETWEEN_CALLS = 8.0  # håller oss under 8 anrop/minut (free tier-gräns)
 _last_call_time = 0.0
@@ -69,7 +79,7 @@ def _throttle() -> None:
 
 
 @retry(stop=stop_after_attempt(3), wait=wait_exponential(multiplier=1, min=3, max=15), reraise=True)
-def _download_twelvedata(td_symbol: str) -> pd.DataFrame:
+def _download_twelvedata(td_symbol: str, td_interval: str) -> pd.DataFrame:
     if not settings.TWELVE_DATA_API_KEY:
         raise MarketDataUnavailableError(
             "TWELVE_DATA_API_KEY saknas - skaffa gratis nyckel på twelvedata.com och "
@@ -80,7 +90,7 @@ def _download_twelvedata(td_symbol: str) -> pd.DataFrame:
     url = "https://api.twelvedata.com/time_series"
     params = {
         "symbol": td_symbol,
-        "interval": "1day",
+        "interval": td_interval,
         "outputsize": 500,
         "apikey": settings.TWELVE_DATA_API_KEY,
         "timezone": "UTC",
@@ -115,11 +125,9 @@ def fetch_ohlcv(symbol: str, timeframe: str) -> pd.DataFrame:
     Returnerar tom DataFrame (inte exception) om data inte kan hämtas,
     så anroparen kan logga och fortsätta utan att krascha hela pipelinen.
     """
-    if timeframe not in SUPPORTED_TIMEFRAMES:
-        logger.warning(
-            "Timeframe %s stöds inte i v1 (endast 1d stöds via Twelve Data free tier) - hoppar över",
-            timeframe,
-        )
+    td_interval = TIMEFRAME_TO_TD_INTERVAL.get(timeframe)
+    if td_interval is None:
+        logger.warning("Timeframe %s stöds inte - hoppar över", timeframe)
         return pd.DataFrame()
 
     td_symbol = TWELVEDATA_SYMBOLS.get(symbol)
@@ -128,7 +136,7 @@ def fetch_ohlcv(symbol: str, timeframe: str) -> pd.DataFrame:
         return pd.DataFrame()
 
     try:
-        df = _download_twelvedata(td_symbol)
+        df = _download_twelvedata(td_symbol, td_interval)
     except Exception as e:
         logger.error("Kunde inte hämta %s (%s) från Twelve Data: %s", symbol, timeframe, e)
         return pd.DataFrame()
