@@ -1,0 +1,31 @@
+name: Macro Data Ingest
+
+# Hämtar amerikansk makrodata (CPI, NFP, Fed Funds Rate m.m.) från FRED.
+# Körs var 6:e timme - makrodata publiceras sällan så tätare körning ger
+# inget mervärde, men fångar upp nya publiceringar samma dag de kommer.
+on:
+  schedule:
+    - cron: "0 */6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  ingest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Installera dependencies
+        run: pip install -r requirements.txt
+
+      - name: Kör makrodata-ingestion
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+        run: python -m engine.data_ingestion.macro_data.run_macro_ingest

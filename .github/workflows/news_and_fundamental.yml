@@ -1,0 +1,36 @@
+name: News and Fundamental Analysis
+
+# Hämtar nyheter från RSS-flöden och kör regelbaserad fundamental-analys på
+# dem. Körs var 30:e minut - tätt nog för att fånga upp marknadspåverkande
+# nyheter snabbt, utan att belasta RSS-källorna onödigt.
+on:
+  schedule:
+    - cron: "*/30 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  news-and-analysis:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Installera dependencies
+        run: pip install -r requirements.txt
+
+      - name: Hämta nyheter (RSS)
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m engine.data_ingestion.news.run_news_ingest
+
+      - name: Kör fundamental-analys på nya nyheter
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: python -m engine.analysis.fundamental.run_fundamental_analysis

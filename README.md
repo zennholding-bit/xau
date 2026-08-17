@@ -7,31 +7,49 @@ entry/SL/TP/confidence, och paper-tradar dem (simulerat, inga riktiga pengar).
 **INGEN riktig handel sker eller kan ske i denna version.** `LiveBroker` är
 permanent inaktiverad i koden (se `engine/paper_trading/broker_interface.py`).
 
-## Vad som fungerar just nu (v0.1)
+## Vad som fungerar just nu (v0.2)
 
-✅ Marknadsdata (XAU/USD + 10 cross-market-symboler) via yfinance, gratis
+✅ Marknadsdata (XAU/USD, 5-minuters candles) via Twelve Data, gratis API
 ✅ Deterministisk teknisk analys: EMA20/50/200, RSI, MACD, ATR, volatilitet,
    support/resistance, market structure (HH/HL vs LH/LL), breakout-detektion
-✅ Signal engine som kombinerar scores till final_score + confidence, med
-   automatisk nedviktning av confidence när data saknas
+✅ **Makrodata (FRED)**: CPI, Core CPI, PCE, NFP, arbetslöshet, Fed Funds Rate,
+   räntor m.m. - regelbaserad tolkning genom kända transmissionskanaler till guld
+✅ **Nyhetsinsamling (RSS)**: Fed, inflation, geopolitik, energi, finansiell
+   stress - från 8 gratis RSS-källor, med dedup/klustring så samma händelse
+   från flera källor inte räknas dubbelt
+✅ **Regelbaserad fundamental-analys**: varje nyhet/makrohändelse tolkas genom
+   en ekonomisk transmissionskanal (t.ex. geopolitik → safe haven-efterfrågan
+   → guld), inte bara "bra/dåligt". Se `engine/analysis/fundamental/`
+✅ **Cross-market score**: DXY, US10Y-ränta och WTI-olja vägs in via kända
+   samband till guldpriset
+✅ Signal engine kombinerar teknisk + fundamental + makro + nyheter +
+   cross-market till ett final_score, med automatisk nedviktning av
+   confidence när enskild data saknas
 ✅ Risk engine: ATR-baserad och struktur-baserad SL/TP, position sizing (0.5% risk/trade)
 ✅ Paper trading engine: öppnar/stänger trades, räknar P&L/R-multiple, uppdaterar saldo
-✅ Fullständigt databasschema (Supabase/Postgres) för hela pipelinen inkl. audit-trail
-✅ GitHub Actions-workflows för schemalagd körning (gratis)
+✅ Fullständig auditbarhet: varje signal länkas till exakt vilka nyheter och
+   makrohändelser som låg bakom den (signal_news_links / signal_macro_links)
+✅ Fullständigt databasschema (Supabase/Postgres) för hela pipelinen
+✅ GitHub Actions-workflows för schemalagd körning (gratis) - signaler var
+   5:e minut, nyheter var 30:e minut, makrodata var 6:e timme
 ✅ Dashboard (Next.js) - KPI-kort, equity curve, latest signals-panel, datumfilter
-✅ 21 automatiska tester, alla gröna
+✅ 54 automatiska tester, alla gröna
 
 ## Vad som INTE är byggt än (nästa steg)
 
-❌ Makrodata-ingestion (CPI, NFP, Fed Funds Rate via FRED API) - tabeller finns, ingestion saknas
-❌ Nyhets-ingestion + AI/regelbaserad analys - tabeller finns, ingestion saknas
+❌ AI/LLM-baserad analys - just nu regelbaserat (du valde detta i v1). Kan
+   kopplas in senare (t.ex. OpenAI) utan att signal-motorn behöver ändras -
+   se `AI_PROVIDER` i `.env.example`
 ❌ Backtesting-modul - databasstruktur klar, motor saknas
-❌ Cross-market score-beräkning (just nu `data_quality="missing"`)
-❌ Signalens detaljvy / "Varför togs denna trade?"-popup - kommer i nästa dashboard-iteration
+❌ Signalens detaljvy / "Varför togs denna trade?"-popup i dashboarden -
+   datan finns redan (signal_news_links/signal_macro_links), bara UI saknas
 
-Fram tills nyheter/makro finns inkopplat körs signal engine **enbart på teknisk
-analys**, och systemet dämpar automatiskt confidence för att kompensera
-(se `engine/signal_engine/signal_engine.py` - `_renormalized_weights`).
+**Viktig ärlighet om makrodata:** FRED (gratis) ger bara FAKTISKA publicerade
+värden, inte analytikerkonsensus/forecast. Det betyder att vi inte kan räkna
+"överraskning vs förväntan" (kräver en betald ekonomisk kalender-tjänst).
+Istället används förändring mot föregående publicering som en transparent
+gratis-proxy. `forecast`/`surprise`-fälten i databasen lämnas NULL - vi
+låtsas aldrig ha data vi inte har.
 
 ---
 
@@ -162,13 +180,28 @@ pytest tests/ -v
 | Nyckel | Krävs för | Var du skaffar den | Gratis? |
 |---|---|---|---|
 | Supabase URL + service_role key | Hela databasen | https://supabase.com | Ja (free tier) |
-| `TWELVE_DATA_API_KEY` | **Marknadsdata (XAU/USD, etc) - obligatorisk** | https://twelvedata.com/pricing (Basic/Free) | Ja (800 anrop/dag) |
-| `FRED_API_KEY` | Makrodata (CPI, NFP, etc) - **byggs i nästa steg** | https://fred.stlouisfed.org/docs/api/api_key.html | Ja |
-| `OPENAI_API_KEY` (valfritt) | AI-analys av nyheter - **byggs senare, du valde regelbaserat först** | https://platform.openai.com | Nej, kostar per anrop |
+| `TWELVE_DATA_API_KEY` | **Marknadsdata (XAU/USD)** | https://twelvedata.com/pricing (Basic/Free) | Ja (800 anrop/dag) |
+| `FRED_API_KEY` | **Makrodata (CPI, NFP, Fed Funds Rate m.m.)** | https://fred.stlouisfed.org/docs/api/api_key.html | Ja |
+| `OPENAI_API_KEY` (valfritt) | AI-analys av nyheter - **ej byggt, systemet kör regelbaserat** | https://platform.openai.com | Nej, kostar per anrop |
+
+### Steg-för-steg: skaffa FRED-nyckeln
+
+1. Gå till https://fred.stlouisfed.org/docs/api/api_key.html
+2. Klicka "Request API Key" (kräver ett gratis FRED-konto - registrera med mejl)
+3. Fyll i det korta formuläret (används bara internt av FRED, ingen betalning)
+4. Nyckeln visas direkt efter registrering - kopiera den
+5. Lägg in i **GitHub → repo → Settings → Secrets and variables → Actions →
+   New repository secret**:
+   - Name: `FRED_API_KEY`
+   - Secret: din nyckel
+
+Ingen annan konfiguration behövs - `macro_data_ingest.yml`-workflowet plockar
+upp den automatiskt.
 
 Marknadsdata krävde tidigare ingen nyckel (yfinance/Stooq), men båda dessa
 gratis "scraping"-källor visade sig blockera trafik från GitHub Actions med
 bot-skydd. Twelve Data är en riktig API och kräver därför en (gratis) nyckel.
+RSS-nyheter kräver ingen nyckel alls (RSS är byggt för maskinell åtkomst).
 
 ---
 

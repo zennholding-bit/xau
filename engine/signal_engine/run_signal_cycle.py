@@ -1,11 +1,14 @@
 """
 Master entry point för en full signal-cykel:
 
-1. Hämta senaste marknadsdata för XAU/USD (+ cross-market-symboler)
+1. Hämta senaste marknadsdata för XAU/USD
 2. Kör teknisk analys -> technical_score + snapshot
-3. (Fundamental/makro/nyheter: markeras "missing" tills de modulerna finns)
+3. Hämta makrodata, nyheter och cross-market-kontext från databasen
+   (redan insamlat av separata schemalagda jobb) -> macro/news/fundamental/
+   cross_market-scores, med strikt lookahead-skydd (bara data publicerad
+   före "nu" räknas)
 4. Bygg signal via signal_engine
-5. Spara signal + snapshot i databasen
+5. Spara signal + snapshot + länkar till källnyheter/makrohändelser i databasen
 6. Kolla öppna paper trades mot senaste candle (SL/TP)
 7. Om signalen kvalificerar: öppna ny paper trade
 8. Logga hela körningen i system_runs
@@ -20,6 +23,7 @@ from datetime import datetime, timezone
 from engine.config.settings import settings
 from engine.data_ingestion.market_data.twelvedata_provider import fetch_ohlcv
 from engine.analysis.technical.engine import analyze as analyze_technical
+from engine.analysis.fundamental.context_builder import build_fundamental_context
 from engine.signal_engine.signal_engine import ScoreInputs, build_signal
 from engine.paper_trading.broker_interface import get_active_broker
 from engine.paper_trading.paper_trading import get_account_balance
@@ -58,22 +62,19 @@ def run() -> dict:
 
         upsert("technical_snapshots", [snapshot], on_conflict="symbol,timeframe,ts")
 
-        # Fundamental/makro/nyheter är inte inkopplade ännu i denna version.
-        # Markeras explicit som "missing" så signal_engine renormaliserar
-        # vikterna och dämpar confidence istället för att gissa ett värde.
+        # Hämta makro/nyheter/cross-market från databasen. as_of = nu, vilket
+        # garanterar att bara data publicerad FÖRE denna signal räknas in
+        # (lookahead-skydd - se context_builder.py).
+        as_of = datetime.now(timezone.utc)
+        ctx = build_fundamental_context(as_of)
+
         scores = ScoreInputs(
             technical_score=snapshot["technical_score"],
-            fundamental_score=0.0,
-            macro_score=0.0,
-            news_score=0.0,
-            cross_market_score=0.0,
-            data_quality={
-                "technical": "ok",
-                "fundamental": "missing",
-                "macro": "missing",
-                "news": "missing",
-                "cross_market": "missing",
-            },
+            fundamental_score=ctx["fundamental_score"],
+            macro_score=ctx["macro_score"],
+            news_score=ctx["news_score"],
+            cross_market_score=ctx["cross_market_score"],
+            data_quality={"technical": "ok", **ctx["data_quality"]},
         )
 
         account_balance = get_account_balance()
@@ -90,14 +91,33 @@ def run() -> dict:
         signal["signal_uid"] = _generate_signal_uid()
         signal["market_conditions_snapshot"] = snapshot
         signal["status"] = "OPEN"
-        # Signalen anses giltig i 4h innan den räknas som expired om ingen trade tagits
         signal["expires_at"] = None
+
+        # Bygg en fullständig, läsbar motivering som väver ihop teknik + fundamenta
+        signal["full_reasoning"] = (
+            f"{signal.get('full_reasoning', '')} "
+            f"MAKRO: {ctx['macro_reasoning']} "
+            f"NYHETER: {ctx['news_reasoning']} "
+            f"CROSS-MARKET: {ctx['cross_market_reasoning']}"
+        ).strip()
 
         saved_signal = insert("signals", [signal])
         saved_signal = saved_signal[0] if saved_signal else signal
+        signal_db_id = saved_signal.get("id")
         logger.info("Signal skapad: %s %s (confidence=%s, final_score=%s)",
                     saved_signal.get("signal_uid"), saved_signal.get("decision"),
                     saved_signal.get("confidence"), saved_signal.get("final_score"))
+
+        # Länka signalen till sina källor för full auditbarhet ("Varför togs denna trade?")
+        if signal_db_id:
+            if ctx["news_ids"]:
+                insert("signal_news_links", [
+                    {"signal_id": signal_db_id, "news_id": nid, "weight": 1.0} for nid in ctx["news_ids"]
+                ])
+            if ctx["macro_event_ids"]:
+                insert("signal_macro_links", [
+                    {"signal_id": signal_db_id, "macro_event_id": mid, "weight": 1.0} for mid in ctx["macro_event_ids"]
+                ])
 
         broker = get_active_broker()
 
