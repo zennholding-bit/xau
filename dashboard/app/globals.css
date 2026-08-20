@@ -14,7 +14,6 @@ body {
 }
 
 .tabular {
-  font-family: "IBM Plex Mono", ui-monospace, monospace;
   font-variant-numeric: tabular-nums;
 }
 

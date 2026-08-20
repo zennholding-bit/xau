@@ -29,7 +29,7 @@ export default function EquityChart({ data }: { data: EquityPoint[] }) {
         <XAxis dataKey="time" hide />
         <YAxis
           domain={["auto", "auto"]}
-          tick={{ fill: "#8A8F98", fontSize: 11, fontFamily: "IBM Plex Mono" }}
+          tick={{ fill: "#8A8F98", fontSize: 11, fontFamily: "Inter" }}
           axisLine={false}
           tickLine={false}
           width={70}
@@ -41,7 +41,7 @@ export default function EquityChart({ data }: { data: EquityPoint[] }) {
             border: "none",
             borderRadius: 12,
             fontSize: 12,
-            fontFamily: "IBM Plex Mono",
+            fontFamily: "Inter",
           }}
           labelStyle={{ color: "#8A8F98" }}
           formatter={(v: number) => [`${v.toLocaleString("sv-SE")} SEK`, "Saldo"]}
