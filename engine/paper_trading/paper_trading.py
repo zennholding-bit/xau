@@ -177,19 +177,21 @@ def _maybe_move_to_breakeven(trade: dict, high: float, low: float, cfg: dict) ->
 
 def monitor_open_trades(latest_candle: dict, symbol: str) -> list[dict]:
     """
-    Går igenom öppna paper trades FÖR GIVEN SYMBOL, i tre steg per trade:
+    Går igenom öppna paper trades FÖR GIVEN SYMBOL, i två steg per trade:
     1. Breakeven-stop: flytta SL till entry+buffert om traden redan gått
        tillräckligt i rätt riktning (se _maybe_move_to_breakeven).
     2. Kolla om candlens high/low träffar (det ev. uppdaterade) SL eller TP.
-    3. Om varken SL eller TP nåtts och max_hold_minutes överskridits: stäng
-       ändå till candlens close-pris med outcome 'EXPIRED'.
+
+    INGEN tidsgräns längre (2026-08-20, borttagen på användarens begäran) -
+    en trade förblir öppen tills SL eller TP faktiskt nås, precis som på ett
+    riktigt broker-konto. En tidigare version tvångsstängde trades efter
+    max_hold_minutes, men det speglade inte hur riktiga mäklare fungerar -
+    de stänger aldrig en position bara för att tiden gått.
 
     symbol är obligatoriskt - annars skulle t.ex. BTCUSD:s candle kunna
     trigga SL/TP på en öppen XAUUSD-position (helt olika prisskalor).
     """
     cfg = settings.SYMBOLS.get(symbol, {})
-    max_hold_minutes = cfg.get("max_hold_minutes")
-    now = latest_candle.get("ts") or datetime.now(timezone.utc)
 
     closed = []
     for trade in get_open_trades(symbol=symbol):
@@ -204,14 +206,4 @@ def monitor_open_trades(latest_candle: dict, symbol: str) -> list[dict]:
             # så en "SL-träff" här är i praktiken en liten vinst, inte en förlust.
             outcome = "WIN" if trade.get("breakeven_moved") else "LOSS"
             closed.append(close_trade(trade, trade["stop_loss"], outcome))
-            continue
-
-        if max_hold_minutes is not None:
-            entry_time = trade.get("entry_time")
-            if entry_time:
-                entry_dt = entry_time if isinstance(entry_time, datetime) else datetime.fromisoformat(str(entry_time))
-                held_minutes = (now - entry_dt).total_seconds() / 60
-                if held_minutes >= max_hold_minutes:
-                    exit_price = latest_candle.get("close", trade["entry_price"])
-                    closed.append(close_trade(trade, exit_price, "EXPIRED"))
     return closed

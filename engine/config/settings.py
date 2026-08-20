@@ -38,9 +38,10 @@ class Settings(BaseSettings):
     # medvetet vägval, inte ett misstag - men bör observeras i paper_trades
     # över några dagar och justeras baserat på faktisk win-rate/pnl.
     #
-    # max_hold_minutes kortades ytterligare (30->15 XAU, 60->30 BTC) och
-    # sl_atr_mult tightades (0.6->0.4 XAU, 0.8->0.6 BTC) - snabbare
-    # in/ut, mindre tid per trade, i linje med "snabba moves".
+    # max_hold_minutes TOGS BORT (2026-08-20) - trades stänger nu bara vid
+    # SL/TP-träff, precis som på ett riktigt broker-konto (mäklare stänger
+    # aldrig en position bara för att tiden gått). sl_atr_mult tightades
+    # tidigare (0.6->0.4 XAU, 0.8->0.6 BTC) för snabbare in/ut.
     SYMBOLS: dict = {
         "XAUUSD": {
             "buy_threshold": 0.05,
@@ -53,7 +54,6 @@ class Settings(BaseSettings):
             "timeframe": "5m",
             "unit_label": "oz",
             "use_fundamental_context": True,
-            "max_hold_minutes": 15,
             "min_confidence_to_trade": 15.0,
             # Breakeven-stop (2026-08-20): när en trade gått breakeven_trigger_r
             # (0.5 = halvvägs till TP, i R-multiplar) i rätt riktning, flyttas
@@ -89,7 +89,6 @@ class Settings(BaseSettings):
             # guldets attraktivitet"). Samma logik gäller inte BTC. Tills en
             # egen BTC-kalibrerad modell finns körs BTC bara på technical_score.
             "use_fundamental_context": False,
-            "max_hold_minutes": 30,
             "min_confidence_to_trade": 8.0,
             "breakeven_trigger_r": 0.5,
             "breakeven_buffer_r": 0.1,
