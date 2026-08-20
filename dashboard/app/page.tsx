@@ -52,7 +52,7 @@ const ListIcon = () => (
 export default function DashboardPage() {
   const [range, setRange] = useState<DateRangeKey>("30d");
   const [tradeTab, setTradeTab] = useState<"open" | "closed">("open"); // OPEN som förstaval, precis som referensen
-  const [chartTab, setChartTab] = useState<"equity" | "XAUUSD" | "BTCUSD">("equity");
+  const [chartTab, setChartTab] = useState<"equity" | "XAUUSD">("equity");
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<AccountState | null>(null);
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -182,12 +182,12 @@ export default function DashboardPage() {
             <StatChip icon={<ClockIcon />} value={kpis.pendingTrades} label="Pending" accent="gold" />
           </section>
 
-          {/* Equity curve / prisgrafer - flikväxlare för att gå mellan
-              kontots equity-kurva och riktiga TradingView-prisgrafer för
-              XAUUSD/BTCUSD (gratis publik embed, ingen inloggning krävs). */}
+          {/* Equity curve / prisgraf - flikväxlare för att gå mellan
+              kontots equity-kurva och en riktig TradingView-prisgraf för
+              XAUUSD (gratis publik embed, ingen inloggning krävs). */}
           <div className="bg-base-900 border border-white/10 rounded-lg p-5 flex-1 flex flex-col min-h-0">
             <div className="flex items-center gap-5 mb-3 shrink-0 border-b border-white/5">
-              {(["equity", "XAUUSD", "BTCUSD"] as const).map((tab) => (
+              {(["equity", "XAUUSD"] as const).map((tab) => (
                 <button
                   key={tab}
                   onClick={() => setChartTab(tab)}

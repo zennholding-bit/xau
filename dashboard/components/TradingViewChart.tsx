@@ -4,7 +4,6 @@ import { useEffect, useRef } from "react";
 
 const SYMBOL_MAP: Record<string, string> = {
   XAUUSD: "OANDA:XAUUSD",
-  BTCUSD: "COINBASE:BTCUSD",
 };
 
 declare global {

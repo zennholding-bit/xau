@@ -36,21 +36,11 @@ class Settings(BaseSettings):
     # 50%-stop-out-gräns skulle kunna nås vid ogynnsam prisrörelse.
     TOTAL_MARGIN_CAP_PCT: float = 0.6
 
-    # --- Signal thresholds & risk, per symbol ---
-    # AGGRESSIV SCALP-PROFIL (2026-08-20, andra iterationen): trösklarna sänkta
-    # ytterligare rejält (XAU 0.12->0.05, BTC 0.18->0.08) för att trades ska
-    # ske i så gott som varje cykel snarare än sällan. VIKTIGT att förstå:
-    # vid dessa nivåer är technical_score ofta lika mycket brus som riktig
-    # signal (se observerad fördelning: avg |score| låg runt 0.13-0.14) - det
-    # här prioriterar frekvens hårt över övertygelse per trade. Förvänta dig
-    # en lägre andel vinnande trades än vid högre trösklar. Detta är ett
-    # medvetet vägval, inte ett misstag - men bör observeras i paper_trades
-    # över några dagar och justeras baserat på faktisk win-rate/pnl.
-    #
-    # max_hold_minutes TOGS BORT (2026-08-20) - trades stänger nu bara vid
-    # SL/TP-träff, precis som på ett riktigt broker-konto (mäklare stänger
-    # aldrig en position bara för att tiden gått). sl_atr_mult tightades
-    # tidigare (0.6->0.4 XAU, 0.8->0.6 BTC) för snabbare in/ut.
+    # --- Signal thresholds & risk ---
+    # Fokus enbart på XAUUSD (2026-08-20): BTCUSD, NDX, SPX och WTI togs alla
+    # bort - beslutet var att lägga allt fokus på att göra guld-motorn
+    # perfekt istället för att sprida ut kvalitet över flera okalibrerade
+    # instrument samtidigt.
     SYMBOLS: dict = {
         "XAUUSD": {
             "buy_threshold": 0.05,
@@ -81,74 +71,6 @@ class Settings(BaseSettings):
             # marginal - risk-baserad storlek skalas ner om den skulle kräva
             # mer, så systemet aldrig föreslår en position som vore omöjlig
             # att öppna på riktigt hos brokern.
-            "max_margin_pct_per_trade": 0.5,
-        },
-        # Nya instrument (2026-08-20): NDX (Nasdaq-100), SPX (S&P 500), WTI
-        # (råolja). VIKTIGT samma varning som gällde BTC: use_fundamental_
-        # context=False för alla tre, eftersom makro-tolkningen i
-        # context_builder.py är kalibrerad specifikt för HUR DET PÅVERKAR
-        # GULD ("sjunkande realränta -> stärker guldets attraktivitet") -
-        # den logiken stämmer inte rakt av för aktieindex (mer komplex
-        # ränte-relation) eller olja (drivs mer av utbud/efterfrågan/OPEC än
-        # av räntor). Alla tre kör därför bara på technical_score tills
-        # tillgångsspecifik makro-kalibrering byggs.
-        #
-        # Trösklar/SL satta KONSERVATIVT och OKALIBRERAT (0.15, bredare SL än
-        # guldets 0.05/0.4) - vi har ingen observerad score-fördelning för
-        # dessa än. Justera efter några dagars drift, precis som XAUUSD:s
-        # 0.28->0.05 togs fram genom att titta på faktisk data.
-        #
-        # Hävstång matchar IC Markets EU-reglerade gränser: index 1:5,
-        # råvaror (olja) 1:10.
-        "NDX": {
-            "buy_threshold": 0.15,
-            "sell_threshold": -0.15,
-            "range_buy_threshold": 0.15,
-            "range_sell_threshold": -0.15,
-            "max_risk_pct": 0.15,
-            "sl_atr_mult": 0.6,
-            "rr_target": 1.0,
-            "timeframe": "1h",
-            "unit_label": "kontrakt",
-            "use_fundamental_context": False,
-            "min_confidence_to_trade": 10.0,
-            "breakeven_trigger_r": 0.5,
-            "breakeven_buffer_r": 0.1,
-            "leverage": 5,
-            "max_margin_pct_per_trade": 0.5,
-        },
-        "SPX": {
-            "buy_threshold": 0.15,
-            "sell_threshold": -0.15,
-            "range_buy_threshold": 0.15,
-            "range_sell_threshold": -0.15,
-            "max_risk_pct": 0.15,
-            "sl_atr_mult": 0.6,
-            "rr_target": 1.0,
-            "timeframe": "1h",
-            "unit_label": "kontrakt",
-            "use_fundamental_context": False,
-            "min_confidence_to_trade": 10.0,
-            "breakeven_trigger_r": 0.5,
-            "breakeven_buffer_r": 0.1,
-            "leverage": 5,
-            "max_margin_pct_per_trade": 0.5,
-        },
-        "WTI": {
-            "buy_threshold": 0.15,
-            "sell_threshold": -0.15,
-            "range_buy_threshold": 0.15,
-            "range_sell_threshold": -0.15,
-            "max_risk_pct": 0.15,
-            "sl_atr_mult": 0.6,
-            "rr_target": 1.0,
-            "timeframe": "1h",
-            "unit_label": "fat",
-            "use_fundamental_context": False,
-            "min_confidence_to_trade": 10.0,
-            "breakeven_trigger_r": 0.5,
-            "breakeven_buffer_r": 0.1,
-            "leverage": 10,
             "max_margin_pct_per_trade": 0.5,
         },
     }
