@@ -28,8 +28,14 @@ class Settings(BaseSettings):
     MAX_RISK_PER_TRADE_PCT: float = 0.5  # % av kontot per trade
 
     # --- Signal thresholds ---
-    BUY_THRESHOLD: float = 0.65
-    SELL_THRESHOLD: float = -0.65
+    # Sänkt från 0.65 (2026-08-20): 143 körda signaler 16-20 aug visade
+    # avg |score|=0.14, max=0.367, p90=0.266 - dvs 0.65 nåddes aldrig i
+    # närheten. 0.28 ligger runt observerad 90:e percentil -> ~1 signal/dag
+    # istället för noll, utan att slänga bort confluence-kravet i technical
+    # engine. Justera vidare när fundamental/macro/news är inkopplade,
+    # eftersom scoret då sprids ut på fler källor och kan bli starkare.
+    BUY_THRESHOLD: float = 0.28
+    SELL_THRESHOLD: float = -0.28
 
     # --- Symbols som ska hämtas ---
     PRIMARY_SYMBOL: str = "XAUUSD"
