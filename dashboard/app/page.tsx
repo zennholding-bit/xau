@@ -73,6 +73,13 @@ export default function DashboardPage() {
   );
 
   const latestSignals = signals.slice(0, 20);
+  const tradeBySignalId = useMemo(() => {
+    const map = new Map<number, PaperTrade>();
+    for (const t of trades) {
+      if (t.signal_id != null) map.set(t.signal_id, t);
+    }
+    return map;
+  }, [trades]);
 
   return (
     <main className="min-h-screen px-4 md:px-8 py-6 max-w-[1600px] mx-auto">
@@ -111,12 +118,9 @@ export default function DashboardPage() {
         <KpiCard label="Win Rate" value={`${kpis.winRate.toFixed(1)}%`} />
         <KpiCard label="Total Signals" value={`${kpis.totalSignals}`} />
         <KpiCard label="Trades Taken" value={`${kpis.tradesTaken}`} />
-        <KpiCard label="Avg R:R" value={kpis.avgRR.toFixed(2)} />
-        <KpiCard
-          label="Profit Factor"
-          value={Number.isFinite(kpis.profitFactor) ? kpis.profitFactor.toFixed(2) : "∞"}
-        />
-        <KpiCard label="Max Drawdown" value={`${kpis.maxDrawdownPct.toFixed(1)}%`} tone="negative" />
+        <KpiCard label="Won" value={`${kpis.winningTrades}`} tone="positive" />
+        <KpiCard label="Lost" value={`${kpis.losingTrades}`} tone="negative" />
+        <KpiCard label="Pending" value={`${kpis.pendingTrades}`} />
       </section>
 
       {/* Equity + Latest signals */}
@@ -137,7 +141,7 @@ export default function DashboardPage() {
               </p>
             )}
             {latestSignals.map((s) => (
-              <SignalCard key={s.id} signal={s} />
+              <SignalCard key={s.id} signal={s} trade={tradeBySignalId.get(s.id)} />
             ))}
           </div>
         </div>

@@ -67,48 +67,41 @@ export type Kpis = {
   tradesTaken: number;
   winningTrades: number;
   losingTrades: number;
-  avgRR: number;
-  profitFactor: number;
-  maxDrawdownPct: number;
+  pendingTrades: number;
 };
 
 export function computeKpis(trades: PaperTrade[], signals: Signal[], account: AccountState | null): Kpis {
-  const closed = trades.filter((t) => t.outcome === "WIN" || t.outcome === "LOSS" || t.outcome === "BREAKEVEN");
-  const wins = closed.filter((t) => t.outcome === "WIN");
-  const losses = closed.filter((t) => t.outcome === "LOSS");
+  // Pending = fortfarande öppen. Closed = har ett exit_time - oavsett vilket
+  // exakt outcome-värde (WIN/LOSS/EXPIRED/BREAKEVEN), avgörs vunnen/förlorad
+  // av pnl_sek:s tecken. Det gör t.ex. en EXPIRED-trade (tidsgränsen slog
+  // till, se max_hold_minutes) som råkade gå plus korrekt räknad som vunnen,
+  // istället för att osynligt falla bort ur statistiken helt.
+  const pending = trades.filter((t) => t.outcome === "OPEN");
+  const closed = trades.filter((t) => t.outcome !== "OPEN" && t.exit_time);
+  const wins = closed.filter((t) => (t.pnl_sek ?? 0) > 0);
+  const losses = closed.filter((t) => (t.pnl_sek ?? 0) <= 0);
 
   const totalPnl = closed.reduce((sum, t) => sum + (t.pnl_sek ?? 0), 0);
-  const grossWin = wins.reduce((sum, t) => sum + (t.pnl_sek ?? 0), 0);
-  const grossLoss = Math.abs(losses.reduce((sum, t) => sum + (t.pnl_sek ?? 0), 0));
-
   const winRate = closed.length > 0 ? (wins.length / closed.length) * 100 : 0;
-  const avgRR =
-    closed.length > 0 ? closed.reduce((sum, t) => sum + (t.r_multiple ?? 0), 0) / closed.length : 0;
-  const profitFactor = grossLoss > 0 ? grossWin / grossLoss : grossWin > 0 ? Infinity : 0;
-
-  // Max drawdown baserat på kontosaldo-sekvensen från stängda trades
-  let peak = -Infinity;
-  let maxDD = 0;
-  let running = account?.starting_balance_sek ?? 100000;
-  for (const t of trades) {
-    if (t.account_balance_after != null) running = t.account_balance_after;
-    if (running > peak) peak = running;
-    const dd = peak > 0 ? ((peak - running) / peak) * 100 : 0;
-    if (dd > maxDD) maxDD = dd;
-  }
 
   return {
     balance: account?.balance_sek ?? 100000,
     totalPnl,
     winRate,
     totalSignals: signals.length,
-    tradesTaken: closed.length + trades.filter((t) => t.outcome === "OPEN").length,
+    tradesTaken: trades.length,
     winningTrades: wins.length,
     losingTrades: losses.length,
-    avgRR,
-    profitFactor,
-    maxDrawdownPct: maxDD,
+    pendingTrades: pending.length,
   };
+}
+
+/** Statusen för en enskild trade, för användning i UI-labels (t.ex. SignalCard). */
+export type TradeStatus = "WON" | "LOST" | "PENDING";
+
+export function tradeStatus(trade: PaperTrade): TradeStatus {
+  if (trade.outcome === "OPEN") return "PENDING";
+  return (trade.pnl_sek ?? 0) > 0 ? "WON" : "LOST";
 }
 
 export type EquityPoint = { time: string; balance: number };
