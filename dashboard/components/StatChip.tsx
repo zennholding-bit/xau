@@ -18,9 +18,9 @@ export default function StatChip({ icon, value, label, accent }: Props) {
       <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${ACCENT_CLASSES[accent]}`}>
         {icon}
       </div>
-      <div className="min-w-0">
-        <div className="text-lg font-bold text-white tabular leading-none">{value}</div>
-        <div className="text-[11px] text-white/60 truncate mt-1">{label}</div>
+      <div className="min-w-0 flex items-baseline gap-2">
+        <span className="text-xl font-bold text-white tabular leading-none">{value}</span>
+        <span className="text-[13px] text-white/60 truncate">{label}</span>
       </div>
     </div>
   );

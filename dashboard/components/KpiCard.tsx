@@ -17,7 +17,7 @@ export default function KpiCard({ label, value, tone = "neutral", hint, sparklin
   return (
     <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-4 flex flex-col gap-2 min-w-0">
       <div className="flex items-start justify-between gap-2">
-        <span className="text-[11px] uppercase tracking-wider text-neutral font-medium">{label}</span>
+        <span className="text-[15px] font-bold text-white">{label}</span>
         {sparkline && <Sparkline data={sparkline} color={sparkColor} />}
       </div>
       <div className="flex items-end justify-between gap-2">
