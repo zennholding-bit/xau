@@ -47,7 +47,15 @@ class Settings(BaseSettings):
             "sell_threshold": -0.05,
             "range_buy_threshold": 0.05,
             "range_sell_threshold": -0.05,
-            "max_risk_pct": 0.2,
+            # Höjd (2026-08-20) från 0.2% -> 0.75% på användarens begäran -
+            # 0.2% gav bara ~10 SEK risk per trade på ett 5000 SEK-konto,
+            # vilket kändes för litet för att märkas. 0.75% ger ~35-40 SEK
+            # risk/vinst istället. Marginal-kollen (cap_size_by_margin,
+            # TOTAL_MARGIN_CAP_PCT) skalar fortfarande ner storleken om en
+            # trade skulle kräva mer marginal än rimligt - höjd risk% byter
+            # alltså inte bort det skyddet, den höjer bara taket innan det
+            # slår till.
+            "max_risk_pct": 0.75,
             "sl_atr_mult": 0.4,
             "rr_target": 1.0,
             "timeframe": "5m",
