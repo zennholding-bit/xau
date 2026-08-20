@@ -1,0 +1,37 @@
+name: BTC Signal Cycle
+
+# Samma pipeline som signal_cycle.yml men för BTC/USD, på 15-minuters
+# cadence istället för 5. Håller separat cron av två skäl:
+# 1. API-budget: XAUUSD-cykeln drar ~288 anrop/dag av Twelve Datas 800/dag-
+#    gräns (free tier). BTC på 5 min hade dragit ytterligare 288 - för nära
+#    taket tillsammans med övrig ingestion. 15 min drar bara ~96/dag.
+# 2. BTC:s timeframe (settings.SYMBOLS.BTCUSD.timeframe) är 15m - att köra
+#    hämtningen oftare än så skulle bara hämta samma candle upprepade gånger.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run-btc-signal-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 8
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Installera dependencies
+        run: pip install -r requirements.txt
+
+      - name: Kör BTC signal-cykeln
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          AI_PROVIDER: "none"
+        run: python -m engine.signal_engine.run_signal_cycle BTCUSD
