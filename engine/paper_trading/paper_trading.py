@@ -27,9 +27,12 @@ def update_account_balance(new_balance: float) -> None:
     db.table("account_state").update({"balance_sek": new_balance, "updated_at": "now()"}).eq("id", 1).execute()
 
 
-def get_open_trades() -> list[dict]:
+def get_open_trades(symbol: str | None = None) -> list[dict]:
     db = get_db()
-    res = db.table("paper_trades").select("*").eq("outcome", "OPEN").execute()
+    query = db.table("paper_trades").select("*").eq("outcome", "OPEN")
+    if symbol:
+        query = query.eq("symbol", symbol)
+    res = query.execute()
     return res.data or []
 
 
@@ -48,7 +51,8 @@ def open_trade_from_signal(signal: dict) -> dict | None:
         "entry_price": signal["entry"],
         "stop_loss": signal["stop_loss"],
         "take_profit": signal["take_profit"],
-        "position_size": signal.get("position_size_oz", 0.0),
+        "position_size": signal.get("position_size", 0.0),
+        "position_size_unit": signal.get("position_size_unit"),
         "risk_amount_sek": signal.get("risk_amount_sek", 0.0),
         "outcome": "OPEN",
     }
@@ -119,13 +123,15 @@ def close_trade(trade: dict, exit_price: float, outcome: str, mfe: float = 0.0, 
     return updated.data[0] if updated.data else trade
 
 
-def monitor_open_trades(latest_candle: dict) -> list[dict]:
+def monitor_open_trades(latest_candle: dict, symbol: str) -> list[dict]:
     """
-    Går igenom alla öppna paper trades och stänger de som träffat SL/TP
-    baserat på den senaste candlens high/low. Körs varje gång ny marknadsdata kommer in.
+    Går igenom öppna paper trades FÖR GIVEN SYMBOL och stänger de som träffat
+    SL/TP baserat på den senaste candlens high/low. symbol är obligatoriskt -
+    annars skulle t.ex. BTCUSD:s candle kunna trigga SL/TP på en öppen
+    XAUUSD-position (helt olika prisskalor), eller tvärtom.
     """
     closed = []
-    for trade in get_open_trades():
+    for trade in get_open_trades(symbol=symbol):
         hit = _check_sl_tp_hit(trade, latest_candle["high"], latest_candle["low"])
         if hit == "TP":
             closed.append(close_trade(trade, trade["take_profit"], "WIN"))

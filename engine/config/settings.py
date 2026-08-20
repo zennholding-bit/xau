@@ -27,25 +27,51 @@ class Settings(BaseSettings):
     STARTING_BALANCE_SEK: float = 100_000.0
     MAX_RISK_PER_TRADE_PCT: float = 0.5  # % av kontot per trade
 
-    # --- Signal thresholds ---
-    # Sänkt från 0.65 (2026-08-20): 143 körda signaler 16-20 aug visade
+    # --- Signal thresholds & risk, per symbol ---
+    # XAUUSD: sänkt från 0.65 (2026-08-20): 143 körda signaler 16-20 aug visade
     # avg |score|=0.14, max=0.367, p90=0.266 - dvs 0.65 nåddes aldrig i
     # närheten. 0.28 ligger runt observerad 90:e percentil -> ~1 signal/dag
     # istället för noll, utan att slänga bort confluence-kravet i technical
-    # engine. Justera vidare när fundamental/macro/news är inkopplade,
-    # eftersom scoret då sprids ut på fler källor och kan bli starkare.
-    BUY_THRESHOLD: float = 0.28
-    SELL_THRESHOLD: float = -0.28
+    # engine.
+    #
+    # BTCUSD (2026-08-20): nytt instrument, ej kalibrerat mot skarp data ännu.
+    # Startar högre än XAUUSD eftersom BTC:s ATR i % ofta är mycket större -
+    # ett score som "känns lika starkt" som guldets kan motsvara en mindre
+    # tillförlitlig rörelse på crypto. sl_atr_mult högre och max_risk_pct lägre
+    # av samma skäl - sänk/justera efter att score-fördelningen observerats
+    # i skarp drift (samma metod som gav XAUUSD:s 0.28).
+    SYMBOLS: dict = {
+        "XAUUSD": {
+            "buy_threshold": 0.28,
+            "sell_threshold": -0.28,
+            "range_buy_threshold": 0.30,
+            "range_sell_threshold": -0.30,
+            "max_risk_pct": 0.5,
+            "sl_atr_mult": 1.5,
+            "rr_target": 2.0,
+            "timeframe": "5m",
+            "unit_label": "oz",
+            "use_fundamental_context": True,
+        },
+        "BTCUSD": {
+            "buy_threshold": 0.35,
+            "sell_threshold": -0.35,
+            "range_buy_threshold": 0.38,
+            "range_sell_threshold": -0.38,
+            "max_risk_pct": 0.3,
+            "sl_atr_mult": 2.0,
+            "rr_target": 2.0,
+            "timeframe": "15m",
+            "unit_label": "BTC",
+            # False: makro/nyhets-tolkningen i context_builder.py är kalibrerad
+            # för HUR DET PÅVERKAR GULD (t.ex. "sjunkande realränta -> stärker
+            # guldets attraktivitet"). Samma logik gäller inte BTC. Tills en
+            # egen BTC-kalibrerad modell finns körs BTC bara på technical_score.
+            "use_fundamental_context": False,
+        },
+    }
 
-    # Separata trösklar för range/mean-reversion-läge (2026-08-20). Range-scoret
-    # har en annan karaktär/skala än trend-scoret (position i intervall + RSI-
-    # extremvärde snarare än EMA-stack), så det ska inte nödvändigtvis dela
-    # tröskel med trend-läget. Okalibrerat - börja här, justera efter att
-    # score-fördelningen i range-läge observerats i skarp drift.
-    RANGE_BUY_THRESHOLD: float = 0.30
-    RANGE_SELL_THRESHOLD: float = -0.30
-
-    # --- Symbols som ska hämtas ---
+    # --- Symbols som tradas aktivt (körs var för sig av signal_cycle) ---
     PRIMARY_SYMBOL: str = "XAUUSD"
 
     def validate_critical(self) -> list[str]:

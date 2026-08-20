@@ -165,7 +165,10 @@ create table if not exists signals (
     market_conditions_snapshot  jsonb,               -- fryst ögonblicksbild av tekniska/makro-data vid signaltillfället
     status                       text not null default 'OPEN', -- 'OPEN','EXPIRED','CANCELLED','TRADED'
     sl_model                     text,                -- vilken SL/TP-modell som användes
-    tp_model                     text
+    tp_model                     text,
+    position_size                numeric,             -- i den enhet symbolen handlas i (oz, BTC, etc)
+    position_size_unit           text,                -- 'oz','BTC',...
+    risk_amount_sek               numeric
 );
 create index if not exists idx_signals_created on signals (created_at desc);
 create index if not exists idx_signals_status on signals (status);
@@ -201,7 +204,8 @@ create table if not exists paper_trades (
     exit_price            numeric,
     stop_loss             numeric not null,
     take_profit            numeric not null,
-    position_size           numeric not null,      -- i lot/oz beroende på symbol
+    position_size           numeric not null,      -- i lot/oz/BTC beroende på symbol
+    position_size_unit       text,                  -- 'oz','BTC',...
     risk_amount_sek         numeric not null,       -- SEK riskerat på traden
     spread_cost              numeric default 0,
     slippage                 numeric default 0,

@@ -66,12 +66,13 @@ def calculate_position_size(account_balance: float, risk_pct: float,
                              entry: float, stop_loss: float) -> dict:
     """
     Position sizing baserat på fast risk % av kontot.
-    För XAU/USD paper trading räknar vi i "oz" (troy ounce), 1 lot = 100 oz
-    (standard för guld-CFD/futures), men vi håller det enkelt: storlek i oz.
+    Generisk över symboler - 'size' är i den enhet som är naturlig för
+    instrumentet (oz för XAU/USD, BTC för BTC/USD, etc - se settings.SYMBOLS
+    unit_label per symbol).
     """
     risk_amount_sek = account_balance * (risk_pct / 100)
     risk_per_unit = abs(entry - stop_loss)
     if risk_per_unit <= 0:
-        return {"size_oz": 0.0, "risk_amount_sek": 0.0}
-    size_oz = risk_amount_sek / risk_per_unit
-    return {"size_oz": round(size_oz, 4), "risk_amount_sek": round(risk_amount_sek, 2)}
+        return {"size": 0.0, "risk_amount_sek": 0.0}
+    size = risk_amount_sek / risk_per_unit
+    return {"size": round(size, 6), "risk_amount_sek": round(risk_amount_sek, 2)}

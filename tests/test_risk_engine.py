@@ -29,10 +29,10 @@ def test_position_sizing_scales_with_risk_distance():
     small_risk = calculate_position_size(account_balance=100_000, risk_pct=0.5, entry=2000.0, stop_loss=1995.0)
     large_risk = calculate_position_size(account_balance=100_000, risk_pct=0.5, entry=2000.0, stop_loss=1980.0)
     # Mindre risk-distans (5) -> större position än vid större risk-distans (20)
-    assert small_risk["size_oz"] > large_risk["size_oz"]
+    assert small_risk["size"] > large_risk["size"]
     assert small_risk["risk_amount_sek"] == 500.0  # 0.5% av 100 000
 
 
 def test_position_sizing_zero_when_no_risk_distance():
     r = calculate_position_size(account_balance=100_000, risk_pct=0.5, entry=2000.0, stop_loss=2000.0)
-    assert r["size_oz"] == 0.0
+    assert r["size"] == 0.0

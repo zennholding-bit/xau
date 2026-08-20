@@ -16,7 +16,7 @@ class BrokerInterface(ABC):
     def place_order(self, signal: dict) -> dict | None: ...
 
     @abstractmethod
-    def check_open_positions(self, latest_candle: dict) -> list[dict]: ...
+    def check_open_positions(self, latest_candle: dict, symbol: str) -> list[dict]: ...
 
 
 class PaperBroker(BrokerInterface):
@@ -25,8 +25,8 @@ class PaperBroker(BrokerInterface):
     def place_order(self, signal: dict) -> dict | None:
         return open_trade_from_signal(signal)
 
-    def check_open_positions(self, latest_candle: dict) -> list[dict]:
-        return monitor_open_trades(latest_candle)
+    def check_open_positions(self, latest_candle: dict, symbol: str) -> list[dict]:
+        return monitor_open_trades(latest_candle, symbol)
 
 
 class LiveBroker(BrokerInterface):
@@ -48,7 +48,7 @@ class LiveBroker(BrokerInterface):
             "(simulerad handel) och får inte skicka riktiga broker-order i denna version."
         )
 
-    def check_open_positions(self, latest_candle: dict) -> list[dict]:
+    def check_open_positions(self, latest_candle: dict, symbol: str) -> list[dict]:
         raise NotImplementedError("LiveBroker är inaktiverad.")
 
 

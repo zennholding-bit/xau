@@ -40,6 +40,7 @@ logger = logging.getLogger(__name__)
 # över (loggas tydligt) tills en premiumkälla kopplas in.
 TWELVEDATA_SYMBOLS = {
     "XAUUSD": "XAU/USD",
+    "BTCUSD": "BTC/USD",
     "DXY": "DXY",
     "US10Y": None,   # inte tillgängligt på free tier
     "US2Y": None,    # inte tillgängligt på free tier

@@ -32,8 +32,7 @@ from engine.database.client import insert, upsert, log_run_start, log_run_finish
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
 logger = logging.getLogger(__name__)
 
-SYMBOL = settings.PRIMARY_SYMBOL  # "XAUUSD"
-ANALYSIS_TIMEFRAME = "5m"  # tätast möjliga gratis-frekvens (GitHub Actions minimum + Twelve Data free tier)
+SYMBOL = settings.PRIMARY_SYMBOL  # default när inget argument ges, se __main__ längst ned
 
 
 def _generate_signal_uid() -> str:
@@ -41,19 +40,24 @@ def _generate_signal_uid() -> str:
     return f"SIG-{today}-{uuid.uuid4().hex[:6].upper()}"
 
 
-def run() -> dict:
-    run_id = log_run_start("signal_engine")
+def run(symbol: str = SYMBOL) -> dict:
+    cfg = settings.SYMBOLS.get(symbol)
+    if cfg is None:
+        raise ValueError(f"Okänd symbol '{symbol}' - lägg till den i settings.SYMBOLS först.")
+    analysis_timeframe = cfg["timeframe"]
+
+    run_id = log_run_start(f"signal_engine:{symbol}")
     errors = []
 
     try:
-        df = fetch_ohlcv(SYMBOL, ANALYSIS_TIMEFRAME)
+        df = fetch_ohlcv(symbol, analysis_timeframe)
         if df.empty or len(df) < 30:
-            msg = f"Otillräcklig marknadsdata för {SYMBOL} ({ANALYSIS_TIMEFRAME}) - avbryter cykeln."
+            msg = f"Otillräcklig marknadsdata för {symbol} ({analysis_timeframe}) - avbryter cykeln."
             logger.warning(msg)
             log_run_finish(run_id, "FAILED", errors=[{"error": msg}], log_summary=msg)
             return {"status": "no_data"}
 
-        snapshot = analyze_technical(df, SYMBOL, ANALYSIS_TIMEFRAME)
+        snapshot = analyze_technical(df, symbol, analysis_timeframe)
         if snapshot is None:
             msg = "Teknisk analys kunde inte köras (för lite data)."
             logger.warning(msg)
@@ -65,8 +69,28 @@ def run() -> dict:
         # Hämta makro/nyheter/cross-market från databasen. as_of = nu, vilket
         # garanterar att bara data publicerad FÖRE denna signal räknas in
         # (lookahead-skydd - se context_builder.py).
-        as_of = datetime.now(timezone.utc)
-        ctx = build_fundamental_context(as_of)
+        # OBS: tolkningen i context_builder.py är kalibrerad för hur makro/
+        # nyheter påverkar GULD specifikt - körs därför bara för symboler med
+        # use_fundamental_context=True (se settings.SYMBOLS). Andra symboler
+        # (t.ex. BTCUSD) får dessa källor markerade som "missing" tills en
+        # egen kalibrerad modell finns, så renormaliseringen i signal_engine
+        # lägger all vikt på technical_score istället för att felaktigt
+        # applicera guld-logik.
+        if cfg.get("use_fundamental_context", True):
+            as_of = datetime.now(timezone.utc)
+            ctx = build_fundamental_context(as_of)
+        else:
+            as_of = datetime.now(timezone.utc)
+            ctx = {
+                "fundamental_score": 0.0, "macro_score": 0.0, "news_score": 0.0,
+                "cross_market_score": 0.0,
+                "data_quality": {"fundamental": "missing", "macro": "missing",
+                                  "news": "missing", "cross_market": "missing"},
+                "macro_reasoning": "Ej tillämpat - use_fundamental_context=False för denna symbol.",
+                "news_reasoning": "Ej tillämpat - use_fundamental_context=False för denna symbol.",
+                "cross_market_reasoning": "Ej tillämpat - use_fundamental_context=False för denna symbol.",
+                "news_ids": [], "macro_event_ids": [],
+            }
 
         scores = ScoreInputs(
             technical_score=snapshot["technical_score"],
@@ -79,14 +103,14 @@ def run() -> dict:
 
         account_balance = get_account_balance()
         signal = build_signal(
-            symbol=SYMBOL,
+            symbol=symbol,
             current_price=snapshot["close"],
             atr=snapshot["atr_14"],
             support=snapshot["support"],
             resistance=snapshot["resistance"],
             scores=scores,
             account_balance=account_balance,
-            time_horizon=ANALYSIS_TIMEFRAME,
+            time_horizon=analysis_timeframe,
             strategy_mode=snapshot.get("strategy_mode", "trend"),
         )
         signal["signal_uid"] = _generate_signal_uid()
@@ -127,7 +151,7 @@ def run() -> dict:
             "high": float(df["high"].iloc[-1]),
             "low": float(df["low"].iloc[-1]),
         }
-        closed_trades = broker.check_open_positions(latest_candle)
+        closed_trades = broker.check_open_positions(latest_candle, symbol)
         for t in closed_trades:
             logger.info("Trade stängd: id=%s outcome=%s pnl_sek=%s", t.get("id"), t.get("outcome"), t.get("pnl_sek"))
 
@@ -153,4 +177,5 @@ def run() -> dict:
 
 
 if __name__ == "__main__":
-    run()
+    import sys
+    run(sys.argv[1] if len(sys.argv) > 1 else SYMBOL)

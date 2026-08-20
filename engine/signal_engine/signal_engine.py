@@ -87,16 +87,18 @@ def calculate_confidence(final_score: float, data_quality: dict, weights: dict) 
     return round(min(confidence, 100.0), 1)
 
 
-def _thresholds_for(strategy_mode: str) -> tuple[float, float]:
-    """Range-läge har egna trösklar (se settings.py) eftersom range_score har
-    annan karaktär/skala än det viktade trend-scoret."""
+def _symbol_config(symbol: str) -> dict:
+    """Faller tillbaka till XAUUSD:s konfiguration om en okänd symbol skulle
+    dyka upp - undviker krasch, men loggas tydligt i full_reasoning ändå."""
+    return settings.SYMBOLS.get(symbol, settings.SYMBOLS["XAUUSD"])
+
+
+def decide(final_score: float, strategy_mode: str, symbol: str) -> str:
+    cfg = _symbol_config(symbol)
     if strategy_mode == "range":
-        return settings.RANGE_BUY_THRESHOLD, settings.RANGE_SELL_THRESHOLD
-    return settings.BUY_THRESHOLD, settings.SELL_THRESHOLD
-
-
-def decide(final_score: float, strategy_mode: str = "trend") -> str:
-    buy_threshold, sell_threshold = _thresholds_for(strategy_mode)
+        buy_threshold, sell_threshold = cfg["range_buy_threshold"], cfg["range_sell_threshold"]
+    else:
+        buy_threshold, sell_threshold = cfg["buy_threshold"], cfg["sell_threshold"]
     if final_score > buy_threshold:
         return "BUY"
     if final_score < sell_threshold:
@@ -118,12 +120,19 @@ def build_signal(
     """Producerar ett komplett signal-dict redo att sparas i `signals`-tabellen.
 
     strategy_mode: 'trend' eller 'range' - avgör vilket trösklar-par som
-    används (se settings.RANGE_BUY_THRESHOLD/RANGE_SELL_THRESHOLD) och sparas
-    med signalen för att kunna jämföra performance mellan modellerna."""
+    används (se settings.SYMBOLS[symbol]) och sparas med signalen för att
+    kunna jämföra performance mellan modellerna.
+    Alla trösklar och riskparametrar (SL-multipel, R/R-mål, max risk %) läses
+    per symbol från settings.SYMBOLS - inte globalt - så olika instrument
+    (t.ex. BTCUSD vs XAUUSD) kan kalibreras helt oberoende av varandra."""
+    cfg = _symbol_config(symbol)
     final_score, weights_used = calculate_final_score(scores)
     confidence = calculate_confidence(final_score, scores.data_quality, weights_used)
-    decision = decide(final_score, strategy_mode)
-    buy_threshold, sell_threshold = _thresholds_for(strategy_mode)
+    decision = decide(final_score, strategy_mode, symbol)
+    if strategy_mode == "range":
+        buy_threshold, sell_threshold = cfg["range_buy_threshold"], cfg["range_sell_threshold"]
+    else:
+        buy_threshold, sell_threshold = cfg["buy_threshold"], cfg["sell_threshold"]
 
     signal = {
         "symbol": symbol,
@@ -148,20 +157,22 @@ def build_signal(
         signal["short_explanation"] = "Inget tillräckligt starkt score i någon riktning - ingen trade tas."
         signal["full_reasoning"] = (
             f"final_score={final_score:.3f} ligger inom NO_TRADE-intervallet "
-            f"({sell_threshold} till {buy_threshold}, strategy_mode={strategy_mode}). "
+            f"({sell_threshold} till {buy_threshold}, strategy_mode={strategy_mode}, symbol={symbol}). "
             f"Vikter använda: {weights_used}."
         )
         return signal
 
-    # Beräkna SL/TP med båda modellerna, välj den strukturbaserade om den ger
-    # rimlig risk/reward (>=1.3), annars fallback till ren ATR-modell.
+    # Beräkna SL/TP med båda modellerna (med symbolens egna ATR-multipel/RR-mål),
+    # välj den strukturbaserade om den ger rimlig risk/reward (>=1.3), annars
+    # fallback till ren ATR-modell.
     structure_result = structure_based_sltp(current_price, decision, support, resistance, atr)
     if structure_result.risk_reward >= 1.3:
         sltp = structure_result
     else:
-        sltp = atr_based_sltp(current_price, decision, atr)
+        sltp = atr_based_sltp(current_price, decision, atr,
+                               sl_atr_mult=cfg["sl_atr_mult"], rr_target=cfg["rr_target"])
 
-    sizing = calculate_position_size(account_balance, settings.MAX_RISK_PER_TRADE_PCT, current_price, sltp.stop_loss)
+    sizing = calculate_position_size(account_balance, cfg["max_risk_pct"], current_price, sltp.stop_loss)
 
     signal["entry"] = round(current_price, 2)
     signal["stop_loss"] = round(sltp.stop_loss, 2)
@@ -182,9 +193,10 @@ def build_signal(
         f"news_score={scores.news_score:.3f} (quality={scores.data_quality.get('news','missing')}), "
         f"cross_market_score={scores.cross_market_score:.3f} (quality={scores.data_quality.get('cross_market','missing')}). "
         f"Vikter använda (renormaliserade efter datatillgänglighet): {weights_used}. "
-        f"SL/TP-modell: {sltp.sl_model}/{sltp.tp_model}."
+        f"SL/TP-modell: {sltp.sl_model}/{sltp.tp_model} (sl_atr_mult={cfg['sl_atr_mult']}, rr_target={cfg['rr_target']})."
     )
-    signal["position_size_oz"] = sizing["size_oz"]
+    signal["position_size"] = sizing["size"]
+    signal["position_size_unit"] = cfg["unit_label"]
     signal["risk_amount_sek"] = sizing["risk_amount_sek"]
 
     return signal
