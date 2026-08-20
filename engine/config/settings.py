@@ -57,7 +57,13 @@ class Settings(BaseSettings):
             # slår till.
             "max_risk_pct": 0.75,
             "sl_atr_mult": 0.4,
-            "rr_target": 1.0,
+            # Höjd (2026-08-20) från 1.0 -> 1.5: data visade att 20 av 21
+            # vinster stängdes i förtid av breakeven (snitt 0.82 SEK) medan
+            # den enda som nådde full TP gav 25.43 SEK - 31x mer. Med TP bara
+            # 1R bort låg breakeven-triggern (0.5R) exakt halvvägs, så minsta
+            # studs tillbaka stängde traden. Mer avstånd till TP ger riktigt
+            # utrymme att springa innan målet nås.
+            "rr_target": 1.5,
             "timeframe": "5m",
             "unit_label": "oz",
             "use_fundamental_context": True,
@@ -68,7 +74,12 @@ class Settings(BaseSettings):
             # kan därefter aldrig vända till förlust, bara till en liten vinst
             # eller full TP. Skyddar INTE trades som går rakt till SL utan att
             # först röra sig i vinst.
-            "breakeven_trigger_r": 0.5,
+            # Höjd (2026-08-20) från 0.5 -> 0.7: i kombination med rr_target
+            # 1.5 innebär det att breakeven nu triggar vid 0.7R av totalt
+            # 1.5R till TP (47% av vägen, inte 100% som tidigare vid 0.5R/1R)
+            # - fortfarande ett skydd, men mycket senare och närmare målet,
+            # så färre vinster stryps i förtid.
+            "breakeven_trigger_r": 0.7,
             "breakeven_buffer_r": 0.1,
             # Hävstång & marginal (2026-08-20): matchar IC Markets EU-reglerade
             # gräns för guld (CySEC/ESMA). Om ditt konto ligger under en
