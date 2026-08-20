@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from engine.config.settings import settings
-from engine.risk_engine.risk_engine import atr_based_sltp, structure_based_sltp, calculate_position_size, cap_size_by_margin
+from engine.risk_engine.risk_engine import atr_based_sltp, structure_based_sltp, calculate_position_size, cap_size_by_margin, clamp_tp_to_pip_range
 
 # Vikter för hur delscoren kombineras till final_score.
 # Tekniskt väger tyngst tills fundamental/makro/nyheter är på plats,
@@ -174,6 +174,16 @@ def build_signal(
     else:
         sltp = atr_based_sltp(current_price, decision, atr,
                                sl_atr_mult=cfg["sl_atr_mult"], rr_target=cfg["rr_target"])
+
+    # Absolut pip-tak (2026-08-20): oavsett vilken modell som valdes ovan,
+    # tvinga TP-avståndet in i ett rimligt pip-intervall - RR-taket i
+    # structure_based_sltp räcker inte ensamt om SL i sig är brett.
+    sltp = clamp_tp_to_pip_range(
+        current_price, decision, sltp.take_profit, sltp.stop_loss,
+        pip_size=cfg.get("pip_size", 0.01),
+        min_tp_pips=cfg.get("min_tp_pips", 60),
+        max_tp_pips=cfg.get("max_tp_pips", 300),
+    )
 
     sizing = calculate_position_size(account_balance, cfg["max_risk_pct"], current_price, sltp.stop_loss)
 

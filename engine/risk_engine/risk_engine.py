@@ -72,6 +72,34 @@ def structure_based_sltp(entry: float, direction: str, support: float | None,
     return SLTPResult(sl, tp, rr, sl_model="structure_based", tp_model="next_structure_level")
 
 
+def clamp_tp_to_pip_range(entry: float, direction: str, take_profit: float, stop_loss: float,
+                           pip_size: float, min_tp_pips: float, max_tp_pips: float) -> SLTPResult:
+    """
+    Tvingar TP-avståndet (oavsett vilken modell som räknade fram det) att
+    ligga inom [min_tp_pips, max_tp_pips] från entry, i faktiska pips - INTE
+    bara ett RR-förhållande. Upptäckt 2026-08-20: max_rr-taket i
+    structure_based_sltp räckte inte ensamt, eftersom SL i sig kan vara brett
+    (t.ex. 617 pips om stöd/motstånd råkar ligga långt bort) - då gav även
+    ett RR-tak på 2.0 fortfarande ett mål på över 1000 pips. Det här sätter
+    en direkt, absolut gräns i pips istället, oavsett hur SL beräknades.
+    """
+    current_distance = abs(take_profit - entry)
+    min_distance = min_tp_pips * pip_size
+    max_distance = max_tp_pips * pip_size
+    clamped_distance = min(max(current_distance, min_distance), max_distance)
+
+    if clamped_distance == current_distance:
+        risk = abs(entry - stop_loss)
+        rr = clamped_distance / risk if risk > 0 else 0.0
+        return SLTPResult(stop_loss, take_profit, rr, sl_model="unchanged", tp_model="unchanged")
+
+    sign = 1 if direction == "BUY" else -1
+    new_tp = entry + sign * clamped_distance
+    risk = abs(entry - stop_loss)
+    rr = clamped_distance / risk if risk > 0 else 0.0
+    return SLTPResult(stop_loss, new_tp, rr, sl_model="unchanged", tp_model="pip_clamped")
+
+
 def calculate_position_size(account_balance: float, risk_pct: float,
                              entry: float, stop_loss: float) -> dict:
     """
