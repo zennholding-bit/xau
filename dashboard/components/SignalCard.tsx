@@ -13,11 +13,6 @@ function directionPill(direction: "BUY" | "SELL") {
     : { label: "SHORT", cls: "bg-sell/15 text-sell" };
 }
 
-function strategyLabel(strategyMode?: string | null) {
-  if (strategyMode === "range") return "Mean Reversion";
-  return "Trend Follow";
-}
-
 /**
  * En rad i OPEN/CLOSED-listan. Ingen ikon-avatar längre - bara symboltexten
  * (XAUUSD/BTCUSD), större och tydligare stil rakt igenom.
@@ -67,8 +62,6 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
           )}
         </div>
       </div>
-
-      <p className="text-[13px] text-white/70">{strategyLabel(signal?.strategy_mode)}</p>
 
       <p className="tabular text-[11.5px] text-neutral whitespace-nowrap overflow-x-auto">
         Entry <span className="text-white/85 font-medium">{trade.entry_price.toFixed(2)}</span>
