@@ -32,6 +32,7 @@ export type Signal = {
   short_explanation: string | null;
   full_reasoning: string | null;
   status: string;
+  strategy_mode?: "trend" | "range" | null;
 };
 
 export type PaperTrade = {

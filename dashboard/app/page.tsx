@@ -50,6 +50,7 @@ const ListIcon = () => (
 
 export default function DashboardPage() {
   const [range, setRange] = useState<DateRangeKey>("30d");
+  const [tradeTab, setTradeTab] = useState<"open" | "closed">("open"); // OPEN som förstaval, precis som referensen
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<AccountState | null>(null);
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -97,14 +98,27 @@ export default function DashboardPage() {
   const balanceSpark = useMemo(() => equity.map((p) => p.balance), [equity]);
   const winRateSpark = useMemo(() => computeWinRateSeries(trades), [trades]);
 
-  const latestSignals = signals.slice(0, 30);
-  const tradeBySignalId = useMemo(() => {
-    const map = new Map<number, PaperTrade>();
-    for (const t of trades) {
-      if (t.signal_id != null) map.set(t.signal_id, t);
-    }
+  const signalById = useMemo(() => {
+    const map = new Map<number, Signal>();
+    for (const s of signals) map.set(s.id, s);
     return map;
-  }, [trades]);
+  }, [signals]);
+
+  const openTrades = useMemo(
+    () =>
+      trades
+        .filter((t) => t.outcome === "OPEN")
+        .sort((a, b) => new Date(b.entry_time).getTime() - new Date(a.entry_time).getTime()),
+    [trades]
+  );
+  const closedTrades = useMemo(
+    () =>
+      trades
+        .filter((t) => t.outcome !== "OPEN")
+        .sort((a, b) => new Date(b.exit_time ?? b.entry_time).getTime() - new Date(a.exit_time ?? a.entry_time).getTime()),
+    [trades]
+  );
+  const visibleTrades = tradeTab === "open" ? openTrades : closedTrades;
 
   return (
     <main className="h-screen overflow-hidden flex flex-col px-4 md:px-8 py-4 max-w-[1700px] mx-auto">
@@ -179,21 +193,39 @@ export default function DashboardPage() {
           </div>
         </div>
 
-        {/* HÖGER KOLUMN: Latest Signals, full höjd, intern scroll */}
+        {/* HÖGER KOLUMN: OPEN/CLOSED trades, full höjd, intern scroll */}
         <div className="bg-base-900 border border-white/10 rounded-lg p-5 flex flex-col min-h-0">
-          <h2 className="flex items-center justify-between text-[15px] font-bold text-white mb-3 shrink-0">
-            Latest Signals
-            <span className="text-neutral"><ListIcon /></span>
-          </h2>
+          {/* Flikar - OPEN (pending trades) är förstaval, CLOSED (vunna/förlorade) därefter */}
+          <div className="flex items-center gap-5 mb-3 shrink-0 border-b border-white/5">
+            <button
+              onClick={() => setTradeTab("open")}
+              className={`pb-2.5 text-[13px] font-bold tracking-wide transition-colors border-b-2 -mb-px ${
+                tradeTab === "open" ? "text-white border-chip-blue" : "text-neutral border-transparent hover:text-white/70"
+              }`}
+            >
+              OPEN
+            </button>
+            <button
+              onClick={() => setTradeTab("closed")}
+              className={`pb-2.5 text-[13px] font-bold tracking-wide transition-colors border-b-2 -mb-px ${
+                tradeTab === "closed" ? "text-white border-chip-blue" : "text-neutral border-transparent hover:text-white/70"
+              }`}
+            >
+              CLOSED
+            </button>
+          </div>
+
           <div className="flex flex-col overflow-y-auto flex-1 min-h-0 pr-1">
             {loading && <p className="text-neutral text-sm px-2 py-3">Laddar...</p>}
-            {!loading && latestSignals.length === 0 && (
+            {!loading && visibleTrades.length === 0 && (
               <p className="text-neutral text-sm px-2 py-3">
-                Inga signaler ännu i vald period. Cykeln körs var 5:e minut — vänta eller trigga den manuellt.
+                {tradeTab === "open"
+                  ? "Inga öppna trades just nu."
+                  : "Inga avslutade trades ännu i vald period."}
               </p>
             )}
-            {latestSignals.map((s) => (
-              <SignalCard key={s.id} signal={s} trade={tradeBySignalId.get(s.id)} />
+            {visibleTrades.map((t) => (
+              <SignalCard key={t.id} trade={t} signal={t.signal_id != null ? signalById.get(t.signal_id) : undefined} />
             ))}
           </div>
         </div>
