@@ -59,6 +59,16 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
           </span>
         </div>
         <p className="text-[12px] text-white/70 mt-1">{strategyLabel(signal?.strategy_mode)}</p>
+        <p className="tabular text-[10px] text-neutral mt-1">
+          Entry <span className="text-white/80">{trade.entry_price.toFixed(2)}</span>
+          {"  ·  "}SL <span className="text-sell/80">{trade.stop_loss.toFixed(2)}</span>
+          {"  ·  "}TP <span className="text-buy/80">{trade.take_profit.toFixed(2)}</span>
+          {trade.exit_price != null && (
+            <>
+              {"  ·  "}Exit <span className={isWin ? "text-buy/80" : "text-sell/80"}>{trade.exit_price.toFixed(2)}</span>
+            </>
+          )}
+        </p>
         <p className="text-[10px] text-neutral mt-0.5">{dateRange}</p>
       </div>
       <div className={`text-right shrink-0 tabular ${resultColor}`}>
