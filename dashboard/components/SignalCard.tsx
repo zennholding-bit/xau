@@ -35,21 +35,19 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
           <span className={`text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded ${dirPill.cls}`}>
             {dirPill.label}
           </span>
-          {!isOpen && (
-            <span
-              className={`text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded ${
-                isWin ? "bg-buy/15 text-buy" : "bg-sell/15 text-sell"
-              }`}
-            >
-              {isWin ? "WON" : "LOST"}
-            </span>
-          )}
         </div>
         <div className={`text-right shrink-0 tabular ${resultColor}`}>
           {isOpen ? (
             <div className="text-[13px] font-semibold">PENDING</div>
           ) : (
             <div className="flex items-baseline gap-2">
+              <span
+                className={`text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded ${
+                  isWin ? "bg-buy/15 text-buy" : "bg-sell/15 text-sell"
+                }`}
+              >
+                {isWin ? "WON" : "LOST"}
+              </span>
               <span className="text-[13px] font-medium">
                 {(trade.pnl_pct ?? 0) >= 0 ? "+" : ""}
                 {trade.pnl_pct?.toFixed(2)}%
@@ -63,14 +61,14 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
         </div>
       </div>
 
-      <p className="tabular text-[11.5px] text-neutral whitespace-nowrap overflow-x-auto">
-        Entry <span className="text-white/85 font-medium">{trade.entry_price.toFixed(2)}</span>
-        {" · "}SL <span className="text-sell/85 font-medium">{trade.stop_loss.toFixed(2)}</span>
-        {" · "}TP <span className="text-buy/85 font-medium">{trade.take_profit.toFixed(2)}</span>
+      <p className="tabular text-[13px] text-neutral whitespace-nowrap overflow-x-auto">
+        Entry <span className="text-white/85 font-semibold">{trade.entry_price.toFixed(2)}</span>
+        {"  ·  "}SL <span className="text-sell/85 font-semibold">{trade.stop_loss.toFixed(2)}</span>
+        {"  ·  "}TP <span className="text-buy/85 font-semibold">{trade.take_profit.toFixed(2)}</span>
         {trade.exit_price != null && (
           <>
-            {" · "}Exit{" "}
-            <span className={`font-medium ${isWin ? "text-buy/85" : "text-sell/85"}`}>
+            {"  ·  "}Exit{" "}
+            <span className={`font-semibold ${isWin ? "text-buy/85" : "text-sell/85"}`}>
               {trade.exit_price.toFixed(2)}
             </span>
           </>
