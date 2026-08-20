@@ -87,6 +87,7 @@ def run() -> dict:
             scores=scores,
             account_balance=account_balance,
             time_horizon=ANALYSIS_TIMEFRAME,
+            strategy_mode=snapshot.get("strategy_mode", "trend"),
         )
         signal["signal_uid"] = _generate_signal_uid()
         signal["market_conditions_snapshot"] = snapshot

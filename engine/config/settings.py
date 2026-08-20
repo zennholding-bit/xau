@@ -37,6 +37,14 @@ class Settings(BaseSettings):
     BUY_THRESHOLD: float = 0.28
     SELL_THRESHOLD: float = -0.28
 
+    # Separata trösklar för range/mean-reversion-läge (2026-08-20). Range-scoret
+    # har en annan karaktär/skala än trend-scoret (position i intervall + RSI-
+    # extremvärde snarare än EMA-stack), så det ska inte nödvändigtvis dela
+    # tröskel med trend-läget. Okalibrerat - börja här, justera efter att
+    # score-fördelningen i range-läge observerats i skarp drift.
+    RANGE_BUY_THRESHOLD: float = 0.30
+    RANGE_SELL_THRESHOLD: float = -0.30
+
     # --- Symbols som ska hämtas ---
     PRIMARY_SYMBOL: str = "XAUUSD"
 

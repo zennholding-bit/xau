@@ -128,6 +128,7 @@ create table if not exists technical_snapshots (
     distance_from_high   numeric,
     distance_from_low    numeric,
     technical_score       numeric,                 -- -1 .. +1
+    strategy_mode         text,                    -- 'trend' eller 'range' - vilken modell som producerade scoret
     created_at            timestamptz not null default now(),
     unique (symbol, timeframe, ts)
 );
@@ -143,6 +144,7 @@ create table if not exists signals (
     symbol                  text not null default 'XAUUSD',
     created_at               timestamptz not null default now(),
     decision                text not null,          -- 'BUY','SELL','NO_TRADE'
+    strategy_mode            text,                  -- 'trend' eller 'range' - vilka trösklar/modell som användes
     entry                    numeric,
     stop_loss                numeric,
     take_profit               numeric,

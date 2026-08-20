@@ -87,10 +87,19 @@ def calculate_confidence(final_score: float, data_quality: dict, weights: dict) 
     return round(min(confidence, 100.0), 1)
 
 
-def decide(final_score: float) -> str:
-    if final_score > settings.BUY_THRESHOLD:
+def _thresholds_for(strategy_mode: str) -> tuple[float, float]:
+    """Range-läge har egna trösklar (se settings.py) eftersom range_score har
+    annan karaktär/skala än det viktade trend-scoret."""
+    if strategy_mode == "range":
+        return settings.RANGE_BUY_THRESHOLD, settings.RANGE_SELL_THRESHOLD
+    return settings.BUY_THRESHOLD, settings.SELL_THRESHOLD
+
+
+def decide(final_score: float, strategy_mode: str = "trend") -> str:
+    buy_threshold, sell_threshold = _thresholds_for(strategy_mode)
+    if final_score > buy_threshold:
         return "BUY"
-    if final_score < settings.SELL_THRESHOLD:
+    if final_score < sell_threshold:
         return "SELL"
     return "NO_TRADE"
 
@@ -104,14 +113,21 @@ def build_signal(
     scores: ScoreInputs,
     account_balance: float,
     time_horizon: str = "1h",
+    strategy_mode: str = "trend",
 ) -> dict:
-    """Producerar ett komplett signal-dict redo att sparas i `signals`-tabellen."""
+    """Producerar ett komplett signal-dict redo att sparas i `signals`-tabellen.
+
+    strategy_mode: 'trend' eller 'range' - avgör vilket trösklar-par som
+    används (se settings.RANGE_BUY_THRESHOLD/RANGE_SELL_THRESHOLD) och sparas
+    med signalen för att kunna jämföra performance mellan modellerna."""
     final_score, weights_used = calculate_final_score(scores)
     confidence = calculate_confidence(final_score, scores.data_quality, weights_used)
-    decision = decide(final_score)
+    decision = decide(final_score, strategy_mode)
+    buy_threshold, sell_threshold = _thresholds_for(strategy_mode)
 
     signal = {
         "symbol": symbol,
+        "strategy_mode": strategy_mode,
         "decision": decision,
         "final_score": round(final_score, 4),
         "technical_score": round(scores.technical_score, 4),
@@ -132,7 +148,7 @@ def build_signal(
         signal["short_explanation"] = "Inget tillräckligt starkt score i någon riktning - ingen trade tas."
         signal["full_reasoning"] = (
             f"final_score={final_score:.3f} ligger inom NO_TRADE-intervallet "
-            f"({settings.SELL_THRESHOLD} till {settings.BUY_THRESHOLD}). "
+            f"({sell_threshold} till {buy_threshold}, strategy_mode={strategy_mode}). "
             f"Vikter använda: {weights_used}."
         )
         return signal

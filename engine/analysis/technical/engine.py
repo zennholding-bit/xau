@@ -14,6 +14,7 @@ import numpy as np
 import pandas as pd
 
 from engine.analysis.technical import indicators as ind
+from engine.analysis.technical.range_engine import range_score
 
 # Vikter för hur mycket varje komponent bidrar till slutgiltiga technical_score.
 # Summerar till 1.0. Konfigurerbart - kan optimeras senare via backtesting.
@@ -103,13 +104,23 @@ def analyze(df: pd.DataFrame, symbol: str, timeframe: str) -> dict | None:
     breakout_score = _breakout_score(breakout, momentum_score)
     position_score = _position_score(current_close, support, resistance)
 
-    technical_score = _clip(
-        WEIGHTS["trend"] * trend_score
-        + WEIGHTS["momentum"] * momentum_score
-        + WEIGHTS["structure"] * structure_score
-        + WEIGHTS["breakout"] * breakout_score
-        + WEIGHTS["position"] * position_score
-    )
+    # I ett klassat "range" ger trend-viktningen nästan alltid ~0 (EMA/momentum-
+    # komponenterna motverkar varandra i sidledes marknad) - byt då till
+    # mean-reversion-modellen istället för att bara producera brus runt noll.
+    # strategy_mode sparas med i snapshotet för spårbarhet (jämföra performance
+    # trend- vs range-trades separat i efterhand).
+    if structure == "range":
+        technical_score = range_score(df, support, resistance, float(rsi14.iloc[last]), float(atr14.iloc[last]))
+        strategy_mode = "range"
+    else:
+        technical_score = _clip(
+            WEIGHTS["trend"] * trend_score
+            + WEIGHTS["momentum"] * momentum_score
+            + WEIGHTS["structure"] * structure_score
+            + WEIGHTS["breakout"] * breakout_score
+            + WEIGHTS["position"] * position_score
+        )
+        strategy_mode = "trend"
 
     prev_high = float(df["high"].iloc[-21:-1].max()) if len(df) > 21 else float(df["high"].max())
     prev_low = float(df["low"].iloc[-21:-1].min()) if len(df) > 21 else float(df["low"].min())
@@ -143,5 +154,6 @@ def analyze(df: pd.DataFrame, symbol: str, timeframe: str) -> dict | None:
         "distance_from_high": _clip((recent_high - current_close) / current_close, -1, 1) if current_close else None,
         "distance_from_low": _clip((current_close - recent_low) / current_close, -1, 1) if current_close else None,
         "technical_score": technical_score,
+        "strategy_mode": strategy_mode,   # 'trend' eller 'range' - vilken modell som producerade scoret
     }
     return snapshot
