@@ -107,29 +107,30 @@ export default function DashboardPage() {
   }, [trades]);
 
   return (
-    <main className="min-h-screen px-4 md:px-8 py-6 max-w-[1700px] mx-auto">
+    <main className="h-screen overflow-hidden flex flex-col px-4 md:px-8 py-4 max-w-[1700px] mx-auto">
       {/* Header */}
-      <header className="flex items-center justify-end gap-3 mb-6">
+      <header className="flex items-center justify-end gap-3 mb-3 shrink-0">
         <LiveIndicator lastUpdated={lastUpdated} />
         <DateFilter value={range} onChange={setRange} />
       </header>
 
       {error && (
-        <div className="mb-6 rounded-lg bg-sell/[0.08] px-4 py-3 text-sm text-sell">
+        <div className="mb-3 rounded-lg bg-sell/[0.08] px-4 py-3 text-sm text-sell shrink-0">
           Kunde inte hämta data: {error}. Kontrollera att NEXT_PUBLIC_SUPABASE_URL och
           NEXT_PUBLIC_SUPABASE_ANON_KEY är korrekt satta i Vercel.
         </div>
       )}
 
-      {/* Huvudlayout: vänster = all statistik + equity-kurva, höger = Latest
-          Signals som en panel som sträcker sig lika högt som hela vänster-
-          kolumnen (grid items-stretch gör att höger kolumn matchar vänsterns
-          totala höjd, från toppraden av kort ner till equity-kortets botten). */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4 items-stretch">
+      {/* Huvudlayout: hela sidan är låst till skärmhöjden (h-screen + overflow-
+          hidden på <main>) - INGEN sidskroll. Höger kolumn (Latest Signals)
+          har sin egen interna scroll (overflow-y-auto) istället, så man
+          scrollar i rutan, inte på hela sidan. Vänster kolumn har min-h-0 så
+          equity-kortet kan krympa vid behov snarare än att tvinga fram scroll. */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4 items-stretch flex-1 min-h-0">
         {/* VÄNSTER KOLUMN */}
-        <div className="flex flex-col gap-3 min-w-0">
+        <div className="flex flex-col gap-3 min-w-0 min-h-0">
           {/* Hero-kort med sparklines */}
-          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
             <KpiCard label="Balance" value={`${SEK.format(kpis.balance)} SEK`} sparkline={balanceSpark} />
             <KpiCard
               label="Total P&L"
@@ -147,43 +148,44 @@ export default function DashboardPage() {
           </section>
 
           {/* Sekundära stora stat-kort */}
-          <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-4">
-              <div className="tabular text-3xl font-bold text-white">{kpis.tradesTaken}</div>
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
+            <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-3">
+              <div className="tabular text-2xl font-bold text-white">{kpis.tradesTaken}</div>
               <div className="text-[13px] text-neutral mt-1">Trades taken totalt</div>
             </div>
-            <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-4">
-              <div className="tabular text-3xl font-bold text-white">{kpis.totalSignals}</div>
+            <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-3">
+              <div className="tabular text-2xl font-bold text-white">{kpis.totalSignals}</div>
               <div className="text-[13px] text-neutral mt-1">Signaler genererade</div>
             </div>
           </section>
 
           {/* Ikon-chip-rad: Won / Lost / Pending */}
-          <section className="flex flex-col sm:flex-row gap-3">
+          <section className="flex flex-col sm:flex-row gap-3 shrink-0">
             <StatChip icon={<CheckIcon />} value={kpis.winningTrades} label="Won" accent="buy" />
             <StatChip icon={<XIcon />} value={kpis.losingTrades} label="Lost" accent="sell" />
             <StatChip icon={<ClockIcon />} value={kpis.pendingTrades} label="Pending" accent="gold" />
           </section>
 
-          {/* Equity curve */}
-          <div className="bg-base-900 border border-white/10 rounded-lg p-5 flex-1 flex flex-col min-h-[320px]">
-            <h2 className="flex items-center justify-between text-[15px] font-bold text-white mb-4">
+          {/* Equity curve - flex-1 + min-h-0 så den fyller kvarvarande utrymme
+              och krymper vid behov istället för att trycka ut sidan i scroll */}
+          <div className="bg-base-900 border border-white/10 rounded-lg p-5 flex-1 flex flex-col min-h-0">
+            <h2 className="flex items-center justify-between text-[15px] font-bold text-white mb-3 shrink-0">
               Equity Curve
               <span className="text-neutral"><SignalIcon /></span>
             </h2>
-            <div className="flex-1">
+            <div className="flex-1 min-h-0">
               <EquityChart data={equity} />
             </div>
           </div>
         </div>
 
-        {/* HÖGER KOLUMN: Latest Signals, full höjd */}
+        {/* HÖGER KOLUMN: Latest Signals, full höjd, intern scroll */}
         <div className="bg-base-900 border border-white/10 rounded-lg p-5 flex flex-col min-h-0">
           <h2 className="flex items-center justify-between text-[15px] font-bold text-white mb-3 shrink-0">
             Latest Signals
             <span className="text-neutral"><ListIcon /></span>
           </h2>
-          <div className="flex flex-col overflow-y-auto flex-1 pr-1">
+          <div className="flex flex-col overflow-y-auto flex-1 min-h-0 pr-1">
             {loading && <p className="text-neutral text-sm px-2 py-3">Laddar...</p>}
             {!loading && latestSignals.length === 0 && (
               <p className="text-neutral text-sm px-2 py-3">
