@@ -32,3 +32,5 @@ jobs:
           FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
           AI_PROVIDER: "none"
         run: python -m engine.signal_engine.run_signal_cycle
+
+# resync-trigger 2026-08-20T14:49:29Z
