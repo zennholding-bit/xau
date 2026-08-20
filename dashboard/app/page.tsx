@@ -142,7 +142,7 @@ export default function DashboardPage() {
           har sin egen interna scroll (overflow-y-auto) istället, så man
           scrollar i rutan, inte på hela sidan. Vänster kolumn har min-h-0 så
           equity-kortet kan krympa vid behov snarare än att tvinga fram scroll. */}
-      <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4 items-stretch flex-1 min-h-0">
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_480px] gap-4 items-stretch flex-1 min-h-0">
         {/* VÄNSTER KOLUMN */}
         <div className="flex flex-col gap-3 min-w-0 min-h-0">
           {/* Hero-kort med sparklines */}
