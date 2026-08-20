@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from "react";
 import KpiCard from "@/components/KpiCard";
+import LiveIndicator from "@/components/LiveIndicator";
 import EquityChart from "@/components/EquityChart";
 import SignalCard from "@/components/SignalCard";
 import DateFilter from "@/components/DateFilter";
@@ -25,30 +26,43 @@ export default function DashboardPage() {
   const [signals, setSignals] = useState<Signal[]>([]);
   const [trades, setTrades] = useState<PaperTrade[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
+  // Auto-refresh: dashboarden hämtade tidigare bara EN gång vid sidladdning
+  // och uppdaterades sen aldrig - man var tvungen att manuellt ladda om för
+  // att se nya trades/signaler, vilket kändes segt även när backend faktiskt
+  // hann köra en ny 5-minuters-cykel under tiden. Pollar nu var 15:e sekund
+  // istället - lätt anrop (bara läsning från Supabase), så det finns
+  // ingen anledning att vänta på en manuell F5 längre.
   useEffect(() => {
     let cancelled = false;
-    setLoading(true);
-    setError(null);
-
     const start = rangeToStartDate(range);
 
-    Promise.all([fetchAccountState(), fetchSignals(start), fetchTrades(start)])
-      .then(([acc, sig, tr]) => {
-        if (cancelled) return;
-        setAccount(acc);
-        setSignals(sig);
-        setTrades(tr);
-      })
-      .catch((e) => {
-        if (!cancelled) setError(String(e));
-      })
-      .finally(() => {
-        if (!cancelled) setLoading(false);
-      });
+    const load = (showSpinner: boolean) => {
+      if (showSpinner) setLoading(true);
+      setError(null);
+      Promise.all([fetchAccountState(), fetchSignals(start), fetchTrades(start)])
+        .then(([acc, sig, tr]) => {
+          if (cancelled) return;
+          setAccount(acc);
+          setSignals(sig);
+          setTrades(tr);
+          setLastUpdated(new Date());
+        })
+        .catch((e) => {
+          if (!cancelled) setError(String(e));
+        })
+        .finally(() => {
+          if (!cancelled) setLoading(false);
+        });
+    };
+
+    load(true); // första hämtningen visar loading-spinner
+    const interval = setInterval(() => load(false), 15000); // därefter tyst i bakgrunden
 
     return () => {
       cancelled = true;
+      clearInterval(interval);
     };
   }, [range]);
 
@@ -73,7 +87,10 @@ export default function DashboardPage() {
             <p className="text-[11px] text-neutral -mt-0.5">Paper trading · ingen riktig handel</p>
           </div>
         </div>
-        <DateFilter value={range} onChange={setRange} />
+        <div className="flex items-center gap-3">
+          <LiveIndicator lastUpdated={lastUpdated} />
+          <DateFilter value={range} onChange={setRange} />
+        </div>
       </header>
 
       {error && (
