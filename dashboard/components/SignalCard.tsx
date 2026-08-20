@@ -1,7 +1,6 @@
 import { PaperTrade, Signal } from "@/lib/supabase";
 
 const DATE_FMT = new Intl.DateTimeFormat("sv-SE", {
-  weekday: "short",
   day: "numeric",
   month: "short",
   hour: "2-digit",
