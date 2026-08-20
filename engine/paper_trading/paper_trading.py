@@ -13,8 +13,6 @@ import pandas as pd
 from engine.config.settings import settings
 from engine.database.client import get_db, insert
 
-MIN_CONFIDENCE_TO_TRADE = 60.0  # kvalificerad signal måste nå denna confidence
-
 
 def get_account_balance() -> float:
     db = get_db()
@@ -37,10 +35,15 @@ def get_open_trades(symbol: str | None = None) -> list[dict]:
 
 
 def open_trade_from_signal(signal: dict) -> dict | None:
-    """Öppnar en paper trade om signalen är kvalificerad (BUY/SELL + tillräcklig confidence)."""
+    """Öppnar en paper trade om signalen är kvalificerad (BUY/SELL + tillräcklig confidence).
+    min_confidence_to_trade läses per symbol från settings.SYMBOLS - INTE en
+    global konstant längre, eftersom en hög generell gräns (tidigare 60%)
+    tyst kunde blockera trades även när decide() redan sagt BUY/SELL."""
     if signal["decision"] == "NO_TRADE":
         return None
-    if signal["confidence"] < MIN_CONFIDENCE_TO_TRADE:
+    cfg = settings.SYMBOLS.get(signal["symbol"], {})
+    min_confidence = cfg.get("min_confidence_to_trade", 20.0)
+    if signal["confidence"] < min_confidence:
         return None
 
     trade = {
@@ -125,16 +128,37 @@ def close_trade(trade: dict, exit_price: float, outcome: str, mfe: float = 0.0, 
 
 def monitor_open_trades(latest_candle: dict, symbol: str) -> list[dict]:
     """
-    Går igenom öppna paper trades FÖR GIVEN SYMBOL och stänger de som träffat
-    SL/TP baserat på den senaste candlens high/low. symbol är obligatoriskt -
-    annars skulle t.ex. BTCUSD:s candle kunna trigga SL/TP på en öppen
-    XAUUSD-position (helt olika prisskalor), eller tvärtom.
+    Går igenom öppna paper trades FÖR GIVEN SYMBOL och stänger de som antingen:
+    1. Träffat SL/TP baserat på den senaste candlens high/low, ELLER
+    2. Legat öppna längre än max_hold_minutes (settings.SYMBOLS[symbol]) -
+       stängs då till candlens close-pris med outcome 'EXPIRED', oavsett
+       SL/TP. Det här är scalping-designens svar på "en trade ska ej vara
+       aktiv jätte länge": en hård tidsgräns istället för att låta trades
+       flyta obestämt.
+
+    symbol är obligatoriskt - annars skulle t.ex. BTCUSD:s candle kunna
+    trigga SL/TP på en öppen XAUUSD-position (helt olika prisskalor).
     """
+    cfg = settings.SYMBOLS.get(symbol, {})
+    max_hold_minutes = cfg.get("max_hold_minutes")
+    now = latest_candle.get("ts") or datetime.now(timezone.utc)
+
     closed = []
     for trade in get_open_trades(symbol=symbol):
         hit = _check_sl_tp_hit(trade, latest_candle["high"], latest_candle["low"])
         if hit == "TP":
             closed.append(close_trade(trade, trade["take_profit"], "WIN"))
-        elif hit == "SL":
+            continue
+        if hit == "SL":
             closed.append(close_trade(trade, trade["stop_loss"], "LOSS"))
+            continue
+
+        if max_hold_minutes is not None:
+            entry_time = trade.get("entry_time")
+            if entry_time:
+                entry_dt = entry_time if isinstance(entry_time, datetime) else datetime.fromisoformat(str(entry_time))
+                held_minutes = (now - entry_dt).total_seconds() / 60
+                if held_minutes >= max_hold_minutes:
+                    exit_price = latest_candle.get("close", trade["entry_price"])
+                    closed.append(close_trade(trade, exit_price, "EXPIRED"))
     return closed

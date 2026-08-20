@@ -18,6 +18,7 @@ Körs av GitHub Actions (se .github/workflows/signal_cycle.yml).
 from __future__ import annotations
 import logging
 import uuid
+import pandas as pd
 from datetime import datetime, timezone
 
 from engine.config.settings import settings
@@ -150,6 +151,8 @@ def run(symbol: str = SYMBOL) -> dict:
         latest_candle = {
             "high": float(df["high"].iloc[-1]),
             "low": float(df["low"].iloc[-1]),
+            "close": float(df["close"].iloc[-1]),
+            "ts": pd.Timestamp(df["ts"].iloc[-1]).to_pydatetime(),
         }
         closed_trades = broker.check_open_positions(latest_candle, symbol)
         for t in closed_trades:
