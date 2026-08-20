@@ -8,12 +8,6 @@ const DATE_FMT = new Intl.DateTimeFormat("sv-SE", {
   minute: "2-digit",
 });
 
-function symbolChip(symbol: string) {
-  if (symbol === "XAUUSD") return { label: "Au", cls: "bg-gold-500/15 text-gold-400" };
-  if (symbol === "BTCUSD") return { label: "₿", cls: "bg-chip-purple/15 text-chip-purple" };
-  return { label: symbol.slice(0, 2), cls: "bg-chip-blue/15 text-chip-blue" };
-}
-
 function directionPill(direction: "BUY" | "SELL") {
   return direction === "BUY"
     ? { label: "LONG", cls: "bg-buy/15 text-buy" }
@@ -26,12 +20,10 @@ function strategyLabel(strategyMode?: string | null) {
 }
 
 /**
- * En rad i OPEN/CLOSED-listan, i stil med referensbilden: symbol + LONG/SHORT-
- * pill överst, strategi-etikett under, datumintervall längst ner - och till
- * höger R:R / % / $ staplat, färgat efter resultat.
+ * En rad i OPEN/CLOSED-listan. Ingen ikon-avatar längre - bara symboltexten
+ * (XAUUSD/BTCUSD), större och tydligare stil rakt igenom.
  */
 export default function SignalCard({ trade, signal }: { trade: PaperTrade; signal?: Signal }) {
-  const chip = symbolChip(trade.symbol);
   const dirPill = directionPill(trade.direction);
   const isOpen = trade.outcome === "OPEN";
   const isWin = !isOpen && (trade.pnl_sek ?? 0) > 0;
@@ -42,19 +34,16 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
   const dateRange = exitDate ? `${entryDate} – ${exitDate}` : `Öppnad ${entryDate}`;
 
   return (
-    <div className="flex items-start gap-3 px-2 py-3 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
-      <div className={`w-8 h-8 rounded-lg flex items-center justify-center shrink-0 font-bold text-xs mt-0.5 ${chip.cls}`}>
-        {chip.label}
-      </div>
-      <div className="min-w-0 flex-1">
-        <div className="flex items-center gap-2">
-          <span className="text-[13px] font-semibold text-white">{trade.symbol}</span>
-          <span className={`text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded ${dirPill.cls}`}>
+    <div className="flex flex-col gap-1.5 px-2 py-3.5 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 min-w-0">
+          <span className="text-[16px] font-bold text-white">{trade.symbol}</span>
+          <span className={`text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded ${dirPill.cls}`}>
             {dirPill.label}
           </span>
           {!isOpen && (
             <span
-              className={`text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded ${
+              className={`text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded ${
                 isWin ? "bg-buy/15 text-buy" : "bg-sell/15 text-sell"
               }`}
             >
@@ -62,35 +51,41 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
             </span>
           )}
         </div>
-        <p className="text-[12px] text-white/70 mt-1">{strategyLabel(signal?.strategy_mode)}</p>
-        <p className="tabular text-[10px] text-neutral mt-1">
-          Entry <span className="text-white/80">{trade.entry_price.toFixed(2)}</span>
-          {"  ·  "}SL <span className="text-sell/80">{trade.stop_loss.toFixed(2)}</span>
-          {"  ·  "}TP <span className="text-buy/80">{trade.take_profit.toFixed(2)}</span>
-          {trade.exit_price != null && (
-            <>
-              {"  ·  "}Exit <span className={isWin ? "text-buy/80" : "text-sell/80"}>{trade.exit_price.toFixed(2)}</span>
-            </>
+        <div className={`text-right shrink-0 tabular ${resultColor}`}>
+          {isOpen ? (
+            <div className="text-[13px] font-semibold">PENDING</div>
+          ) : (
+            <div className="flex items-baseline gap-2">
+              <span className="text-[13px] font-medium">
+                {(trade.pnl_pct ?? 0) >= 0 ? "+" : ""}
+                {trade.pnl_pct?.toFixed(2)}%
+              </span>
+              <span className="text-[14px] font-bold">
+                {(trade.pnl_sek ?? 0) >= 0 ? "+" : ""}
+                {trade.pnl_sek?.toFixed(0)} SEK
+              </span>
+            </div>
           )}
-        </p>
-        <p className="text-[10px] text-neutral mt-0.5">{dateRange}</p>
+        </div>
       </div>
-      <div className={`text-right shrink-0 tabular ${resultColor}`}>
-        {isOpen ? (
-          <div className="text-[11px] font-medium">PENDING</div>
-        ) : (
+
+      <p className="text-[13px] text-white/70">{strategyLabel(signal?.strategy_mode)}</p>
+
+      <p className="tabular text-[11.5px] text-neutral whitespace-nowrap overflow-x-auto">
+        Entry <span className="text-white/85 font-medium">{trade.entry_price.toFixed(2)}</span>
+        {" · "}SL <span className="text-sell/85 font-medium">{trade.stop_loss.toFixed(2)}</span>
+        {" · "}TP <span className="text-buy/85 font-medium">{trade.take_profit.toFixed(2)}</span>
+        {trade.exit_price != null && (
           <>
-            <div className="text-[12px] font-medium">
-              {(trade.pnl_pct ?? 0) >= 0 ? "+" : ""}
-              {trade.pnl_pct?.toFixed(2)} %
-            </div>
-            <div className="text-[12px] font-semibold mt-0.5">
-              {(trade.pnl_sek ?? 0) >= 0 ? "+" : ""}
-              {trade.pnl_sek?.toFixed(0)} SEK
-            </div>
+            {" · "}Exit{" "}
+            <span className={`font-medium ${isWin ? "text-buy/85" : "text-sell/85"}`}>
+              {trade.exit_price.toFixed(2)}
+            </span>
           </>
         )}
-      </div>
+      </p>
+
+      <p className="text-[11px] text-neutral/80">{dateRange}</p>
     </div>
   );
 }
