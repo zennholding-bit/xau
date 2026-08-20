@@ -61,7 +61,7 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
         </div>
       </div>
 
-      <p className="tabular text-[13px] text-neutral whitespace-nowrap overflow-x-auto">
+      <p className="tabular text-[13px] text-neutral whitespace-nowrap">
         Entry <span className="text-white/85 font-semibold">{trade.entry_price.toFixed(2)}</span>
         {"  ·  "}SL <span className="text-sell/85 font-semibold">{trade.stop_loss.toFixed(2)}</span>
         {"  ·  "}TP <span className="text-buy/85 font-semibold">{trade.take_profit.toFixed(2)}</span>
