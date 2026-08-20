@@ -77,6 +77,9 @@ class Settings(BaseSettings):
             "pip_size": 0.01,
             "min_tp_pips": 60,
             "max_tp_pips": 300,
+            # Avvisar strukturbaserad SL om den är bredare än detta ×ATR -
+            # se signal_engine.py för fullständig förklaring av varför.
+            "max_structure_sl_atr_mult": 2.5,
             "timeframe": "5m",
             "unit_label": "oz",
             "use_fundamental_context": True,

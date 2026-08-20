@@ -163,21 +163,35 @@ def build_signal(
         return signal
 
     # Beräkna SL/TP med båda modellerna (med symbolens egna ATR-multipel/RR-mål),
-    # välj den strukturbaserade om den ger rimlig risk/reward (>=1.3), annars
+    # välj den strukturbaserade om den ger rimlig risk/reward (>=1.3) OCH har
+    # en SL som är rimlig jämfört med faktisk volatilitet (ATR) - annars
     # fallback till ren ATR-modell.
+    #
+    # Grundorsaks-fix (2026-08-20): structure_based_sltp valdes tidigare
+    # baserat ENDAST på RR-förhållandet, inte på om SL-avståndet i sig var
+    # rimligt. Om stöd/motstånd råkade ligga långt bort (t.ex. en gammal,
+    # inaktuell nivå) kunde SL bli 800-1100 pips bred trots att ATR bara var
+    # ~350 pips - vilket i sin tur tvingade TP mot pip-taket varje gång,
+    # så alla mål landade konstgjort på exakt samma siffra istället för att
+    # variera naturligt. Nu avvisas strukturmodellen helt om dess SL
+    # överstiger max_structure_sl_atr_mult * ATR, och ATR-modellen (som ger
+    # naturligt varierande, ATR-proportionella mål) används istället.
     structure_result = structure_based_sltp(
         current_price, decision, support, resistance, atr,
         min_rr=cfg["rr_target"], max_rr=cfg.get("max_rr_cap", cfg["rr_target"] * 1.3)
     )
-    if structure_result.risk_reward >= 1.3:
+    structure_sl_distance = abs(current_price - structure_result.stop_loss)
+    structure_sl_reasonable = structure_sl_distance <= cfg.get("max_structure_sl_atr_mult", 2.5) * atr
+
+    if structure_result.risk_reward >= 1.3 and structure_sl_reasonable:
         sltp = structure_result
     else:
         sltp = atr_based_sltp(current_price, decision, atr,
                                sl_atr_mult=cfg["sl_atr_mult"], rr_target=cfg["rr_target"])
 
-    # Absolut pip-tak (2026-08-20): oavsett vilken modell som valdes ovan,
-    # tvinga TP-avståndet in i ett rimligt pip-intervall - RR-taket i
-    # structure_based_sltp räcker inte ensamt om SL i sig är brett.
+    # Absolut pip-tak (2026-08-20): kvarstår som ett sista skyddsnät för
+    # sällsynta extremfall, men ska normalt sett inte behöva göra något nu
+    # när grundorsaken (orimligt bred strukturell SL) är åtgärdad ovan.
     sltp = clamp_tp_to_pip_range(
         current_price, decision, sltp.take_profit, sltp.stop_loss,
         pip_size=cfg.get("pip_size", 0.01),
