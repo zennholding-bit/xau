@@ -1,65 +1,55 @@
 import { PaperTrade, Signal } from "@/lib/supabase";
 import { tradeStatus } from "@/lib/data";
 
-function decisionColor(decision: string) {
-  if (decision === "BUY") return "text-buy border-buy/30 bg-buy/[0.06]";
-  if (decision === "SELL") return "text-sell border-sell/30 bg-sell/[0.06]";
-  return "text-neutral border-white/10 bg-white/[0.03]";
+function symbolChip(symbol: string) {
+  // Ikon-chip per instrument, i samma anda som referensens färgade fyrkantiga
+  // ikon-avatarer i händelselistan - en unik accent per symbol istället för
+  // en generisk enfärgad prick.
+  if (symbol === "XAUUSD") return { label: "Au", cls: "bg-gold-500/15 text-gold-400" };
+  if (symbol === "BTCUSD") return { label: "₿", cls: "bg-chip-purple/15 text-chip-purple" };
+  return { label: symbol.slice(0, 2), cls: "bg-chip-blue/15 text-chip-blue" };
 }
 
 function statusBadge(status: "WON" | "LOST" | "PENDING") {
-  if (status === "WON") return { label: "WON", cls: "text-buy border-buy/40 bg-buy/[0.12]" };
-  if (status === "LOST") return { label: "LOST", cls: "text-sell border-sell/40 bg-sell/[0.12]" };
-  return { label: "PENDING", cls: "text-gold-400 border-gold-500/40 bg-gold-500/[0.10]" };
+  if (status === "WON") return { label: "WON", cls: "bg-buy/10 text-buy" };
+  if (status === "LOST") return { label: "LOST", cls: "bg-sell/10 text-sell" };
+  return { label: "PENDING", cls: "bg-gold-500/10 text-gold-400" };
 }
 
 export default function SignalCard({ signal, trade }: { signal: Signal; trade?: PaperTrade }) {
   const time = new Date(signal.created_at).toLocaleTimeString("sv-SE", { hour: "2-digit", minute: "2-digit" });
+  const chip = symbolChip(signal.symbol);
   const badge = trade ? statusBadge(tradeStatus(trade)) : null;
+  const decisionColor =
+    signal.decision === "BUY" ? "text-buy" : signal.decision === "SELL" ? "text-sell" : "text-neutral";
+
+  const subtitle =
+    signal.decision === "NO_TRADE"
+      ? signal.short_explanation ?? "Inget tillräckligt starkt score."
+      : trade?.exit_price != null
+      ? `${signal.entry?.toFixed(2)} → ${trade.exit_price.toFixed(2)} · ${(trade.pnl_sek ?? 0) >= 0 ? "+" : ""}${trade.pnl_sek?.toFixed(0)} SEK`
+      : `Entry ${signal.entry?.toFixed(2)} · SL ${signal.stop_loss?.toFixed(2)} · TP ${signal.take_profit?.toFixed(2)}`;
 
   return (
-    <div className={`rounded-lg border px-3 py-3 flex flex-col gap-2 ${decisionColor(signal.decision)}`}>
-      <div className="flex items-center justify-between">
-        <span className="text-xs font-semibold tracking-wide">{signal.symbol}</span>
-        <div className="flex items-center gap-1.5">
+    <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-white/[0.03] transition-colors">
+      <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm ${chip.cls}`}>
+        {chip.label}
+      </div>
+      <div className="min-w-0 flex-1">
+        <div className="flex items-center gap-2">
+          <span className="text-[13px] font-semibold text-white truncate">{signal.symbol}</span>
+          <span className={`text-[11px] font-bold ${decisionColor}`}>{signal.decision.replace("_", " ")}</span>
           {badge && (
-            <span className={`text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded border ${badge.cls}`}>
+            <span className={`text-[9px] font-bold tracking-wide px-1.5 py-0.5 rounded-full ${badge.cls}`}>
               {badge.label}
             </span>
           )}
-          <span className="text-xs font-bold tabular">{signal.decision.replace("_", " ")}</span>
         </div>
+        <p className="text-[11px] text-neutral truncate mt-0.5">{subtitle}</p>
       </div>
-
-      {signal.decision !== "NO_TRADE" ? (
-        <div className="tabular text-[11px] text-neutral grid grid-cols-2 gap-x-3 gap-y-0.5">
-          <span>Entry</span>
-          <span className="text-right text-white/90">{signal.entry?.toFixed(2)}</span>
-          <span>SL</span>
-          <span className="text-right text-white/90">{signal.stop_loss?.toFixed(2)}</span>
-          <span>TP</span>
-          <span className="text-right text-white/90">{signal.take_profit?.toFixed(2)}</span>
-          <span>R:R</span>
-          <span className="text-right text-white/90">{signal.risk_reward?.toFixed(2)}</span>
-          {trade?.exit_price != null && (
-            <>
-              <span>Exit</span>
-              <span className="text-right text-white/90">{trade.exit_price.toFixed(2)}</span>
-              <span>P&L</span>
-              <span className={`text-right font-semibold ${(trade.pnl_sek ?? 0) >= 0 ? "text-buy" : "text-sell"}`}>
-                {(trade.pnl_sek ?? 0) >= 0 ? "+" : ""}
-                {trade.pnl_sek?.toFixed(0)} SEK
-              </span>
-            </>
-          )}
-        </div>
-      ) : (
-        <p className="text-[11px] text-neutral leading-snug line-clamp-2">{signal.short_explanation}</p>
-      )}
-
-      <div className="flex items-center justify-between text-[11px] text-neutral">
-        <span>Confidence: <span className="tabular text-gold-400">{signal.confidence?.toFixed(0)}%</span></span>
-        <span className="tabular">{time}</span>
+      <div className="text-right shrink-0">
+        <div className="text-[11px] text-neutral tabular">{time}</div>
+        <div className="text-[10px] text-gold-400 tabular">{signal.confidence?.toFixed(0)}%</div>
       </div>
     </div>
   );

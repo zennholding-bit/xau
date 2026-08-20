@@ -117,3 +117,18 @@ export function computeEquityCurve(trades: PaperTrade[], startingBalance: number
   }
   return points;
 }
+
+/** Rullande win-rate (%) i kronologisk ordning, för sparkline på Win Rate-kortet. */
+export function computeWinRateSeries(trades: PaperTrade[]): number[] {
+  const closed = trades
+    .filter((t) => t.outcome !== "OPEN" && t.exit_time)
+    .sort((a, b) => new Date(a.exit_time!).getTime() - new Date(b.exit_time!).getTime());
+
+  const series: number[] = [];
+  let wins = 0;
+  closed.forEach((t, i) => {
+    if ((t.pnl_sek ?? 0) > 0) wins += 1;
+    series.push((wins / (i + 1)) * 100);
+  });
+  return series;
+}

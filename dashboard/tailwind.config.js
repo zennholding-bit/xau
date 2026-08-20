@@ -4,13 +4,13 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // Terminal-botten: djup, nästan svart blånyans - inte rent svart, inte generisk kall grå
+        // Terminal-botten: rent svart som referensen (Uncle Bud-dashboarden)
         base: {
-          950: "#0A0D12",
-          900: "#0F131A",
-          800: "#161B24",
-          700: "#1F2530",
-          600: "#2A3140",
+          950: "#000000",
+          900: "#0A0A0A",
+          800: "#121212",
+          700: "#1C1C1C",
+          600: "#2A2A2A",
         },
         // Guld - temat är bokstavligen XAU (guld), så accenten är motiverad av ämnet
         gold: {
@@ -19,9 +19,15 @@ module.exports = {
           600: "#B8892E",
         },
         // Semantiska handelsfärger
-        buy: "#3DDC84",
-        sell: "#F0553C",
-        neutral: "#7A8494",
+        buy: "#34D399",
+        sell: "#F43F5E",
+        neutral: "#8A8F98",
+        // Chip-accenter för sekundära ikon-badges (sparklines/icon-chips), i stil
+        // med referensdashboardens blå/lila/rosa rotation
+        chip: {
+          blue: "#5B8DEF",
+          purple: "#A78BFA",
+        },
       },
       fontFamily: {
         mono: ["'IBM Plex Mono'", "ui-monospace", "SFMono-Regular", "monospace"],

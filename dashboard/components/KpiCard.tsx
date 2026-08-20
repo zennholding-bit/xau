@@ -1,18 +1,37 @@
+import Sparkline from "./Sparkline";
+
 type Props = {
   label: string;
   value: string;
   tone?: "neutral" | "positive" | "negative";
   hint?: string;
+  sparkline?: number[];
+  badge?: string;
 };
 
-export default function KpiCard({ label, value, tone = "neutral", hint }: Props) {
+export default function KpiCard({ label, value, tone = "neutral", hint, sparkline, badge }: Props) {
   const toneColor =
-    tone === "positive" ? "text-buy" : tone === "negative" ? "text-sell" : "text-gold-400";
+    tone === "positive" ? "text-buy" : tone === "negative" ? "text-sell" : "text-white";
+  const sparkColor = tone === "positive" ? "#34D399" : tone === "negative" ? "#F43F5E" : "#5B8DEF";
 
   return (
-    <div className="bg-base-900 border border-white/[0.07] rounded-lg px-4 py-3 flex flex-col gap-1 min-w-0">
-      <span className="text-[11px] uppercase tracking-wider text-neutral font-medium">{label}</span>
-      <span className={`tabular text-2xl font-semibold ${toneColor} truncate`}>{value}</span>
+    <div className="bg-base-900 rounded-2xl px-5 py-4 flex flex-col gap-2 min-w-0">
+      <div className="flex items-start justify-between gap-2">
+        <span className="text-[11px] uppercase tracking-wider text-neutral font-medium">{label}</span>
+        {sparkline && sparkline.length > 1 && <Sparkline data={sparkline} color={sparkColor} />}
+      </div>
+      <div className="flex items-end justify-between gap-2">
+        <span className={`tabular text-2xl font-bold ${toneColor} truncate`}>{value}</span>
+        {badge && (
+          <span
+            className={`text-[11px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${
+              tone === "negative" ? "bg-sell/10 text-sell" : "bg-buy/10 text-buy"
+            }`}
+          >
+            {badge}
+          </span>
+        )}
+      </div>
       {hint && <span className="text-[11px] text-neutral">{hint}</span>}
     </div>
   );
