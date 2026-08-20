@@ -5,6 +5,7 @@ import KpiCard from "@/components/KpiCard";
 import StatChip from "@/components/StatChip";
 import LiveIndicator from "@/components/LiveIndicator";
 import EquityChart from "@/components/EquityChart";
+import TradingViewChart from "@/components/TradingViewChart";
 import SignalCard from "@/components/SignalCard";
 import DateFilter from "@/components/DateFilter";
 import {
@@ -51,6 +52,7 @@ const ListIcon = () => (
 export default function DashboardPage() {
   const [range, setRange] = useState<DateRangeKey>("30d");
   const [tradeTab, setTradeTab] = useState<"open" | "closed">("open"); // OPEN som förstaval, precis som referensen
+  const [chartTab, setChartTab] = useState<"equity" | "XAUUSD" | "BTCUSD">("equity");
   const [loading, setLoading] = useState(true);
   const [account, setAccount] = useState<AccountState | null>(null);
   const [signals, setSignals] = useState<Signal[]>([]);
@@ -180,15 +182,31 @@ export default function DashboardPage() {
             <StatChip icon={<ClockIcon />} value={kpis.pendingTrades} label="Pending" accent="gold" />
           </section>
 
-          {/* Equity curve - flex-1 + min-h-0 så den fyller kvarvarande utrymme
-              och krymper vid behov istället för att trycka ut sidan i scroll */}
+          {/* Equity curve / prisgrafer - flikväxlare för att gå mellan
+              kontots equity-kurva och riktiga TradingView-prisgrafer för
+              XAUUSD/BTCUSD (gratis publik embed, ingen inloggning krävs). */}
           <div className="bg-base-900 border border-white/10 rounded-lg p-5 flex-1 flex flex-col min-h-0">
-            <h2 className="flex items-center justify-between text-[15px] font-bold text-white mb-3 shrink-0">
-              Equity Curve
-              <span className="text-neutral"><SignalIcon /></span>
-            </h2>
+            <div className="flex items-center gap-5 mb-3 shrink-0 border-b border-white/5">
+              {(["equity", "XAUUSD", "BTCUSD"] as const).map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setChartTab(tab)}
+                  className={`pb-2.5 text-[13px] font-bold tracking-wide transition-colors border-b-2 -mb-px ${
+                    chartTab === tab
+                      ? "text-white border-chip-blue"
+                      : "text-neutral border-transparent hover:text-white/70"
+                  }`}
+                >
+                  {tab === "equity" ? "EQUITY" : tab}
+                </button>
+              ))}
+            </div>
             <div className="flex-1 min-h-0">
-              <EquityChart data={equity} />
+              {chartTab === "equity" ? (
+                <EquityChart data={equity} />
+              ) : (
+                <TradingViewChart symbol={chartTab} />
+              )}
             </div>
           </div>
         </div>
