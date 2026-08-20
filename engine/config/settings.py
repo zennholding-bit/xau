@@ -55,6 +55,14 @@ class Settings(BaseSettings):
             "use_fundamental_context": True,
             "max_hold_minutes": 15,
             "min_confidence_to_trade": 15.0,
+            # Breakeven-stop (2026-08-20): när en trade gått breakeven_trigger_r
+            # (0.5 = halvvägs till TP, i R-multiplar) i rätt riktning, flyttas
+            # SL till entry + en liten buffert (breakeven_buffer_r) - traden
+            # kan därefter aldrig vända till förlust, bara till en liten vinst
+            # eller full TP. Skyddar INTE trades som går rakt till SL utan att
+            # först röra sig i vinst.
+            "breakeven_trigger_r": 0.5,
+            "breakeven_buffer_r": 0.1,
         },
         "BTCUSD": {
             "buy_threshold": 0.08,
@@ -73,6 +81,8 @@ class Settings(BaseSettings):
             "use_fundamental_context": False,
             "max_hold_minutes": 30,
             "min_confidence_to_trade": 8.0,
+            "breakeven_trigger_r": 0.5,
+            "breakeven_buffer_r": 0.1,
         },
     }
 

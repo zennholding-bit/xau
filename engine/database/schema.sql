@@ -216,6 +216,7 @@ create table if not exists paper_trades (
     mfe                        numeric,              -- max favorable excursion
     mae                        numeric,              -- max adverse excursion
     outcome                    text,                 -- 'WIN','LOSS','BREAKEVEN','EXPIRED','CANCELLED','OPEN'
+    breakeven_moved            boolean not null default false,  -- true om SL flyttats till entry+buffert (se paper_trading.py)
     account_balance_after       numeric,
     created_at                   timestamptz not null default now()
 );

@@ -126,15 +126,63 @@ def close_trade(trade: dict, exit_price: float, outcome: str, mfe: float = 0.0, 
     return updated.data[0] if updated.data else trade
 
 
+def _update_stop_loss(trade_id: int, new_sl: float) -> None:
+    db = get_db()
+    db.table("paper_trades").update({"stop_loss": round(new_sl, 5)}).eq("id", trade_id).execute()
+    insert("trade_events", [{
+        "trade_id": trade_id,
+        "event_type": "BREAKEVEN_MOVED",
+        "price": new_sl,
+        "details": {"new_stop_loss": round(new_sl, 5)},
+    }])
+
+
+def _maybe_move_to_breakeven(trade: dict, high: float, low: float, cfg: dict) -> dict:
+    """
+    Breakeven-stop: om traden redan rört sig breakeven_trigger_r (i R-multiplar,
+    t.ex. 0.5 = halvvägs till TP) i rätt riktning, flyttas SL till entry + en
+    liten buffert (breakeven_buffer_r). Traden kan därefter inte längre
+    vändas till förlust - bara till en liten vinst eller full TP.
+
+    VIKTIGT: skyddar bara trades som REDAN gått i vinst tillräckligt mycket.
+    En trade som går rakt till SL utan att först röra sig i rätt riktning
+    påverkas inte alls av detta.
+
+    Returnerar traden (ev. med uppdaterat stop_loss om flytten gjordes).
+    """
+    trigger_r = cfg.get("breakeven_trigger_r")
+    buffer_r = cfg.get("breakeven_buffer_r", 0.0)
+    if trigger_r is None or trade.get("breakeven_moved"):
+        return trade
+
+    entry = trade["entry_price"]
+    original_sl = trade["stop_loss"]
+    risk_per_unit = abs(entry - original_sl)
+    if risk_per_unit <= 0:
+        return trade
+
+    direction = trade["direction"]
+    best_price = high if direction == "BUY" else low
+    favorable_move = (best_price - entry) if direction == "BUY" else (entry - best_price)
+    favorable_r = favorable_move / risk_per_unit
+
+    if favorable_r >= trigger_r:
+        new_sl = entry + buffer_r * risk_per_unit if direction == "BUY" else entry - buffer_r * risk_per_unit
+        _update_stop_loss(trade["id"], new_sl)
+        trade = dict(trade)
+        trade["stop_loss"] = new_sl
+        trade["breakeven_moved"] = True
+    return trade
+
+
 def monitor_open_trades(latest_candle: dict, symbol: str) -> list[dict]:
     """
-    Går igenom öppna paper trades FÖR GIVEN SYMBOL och stänger de som antingen:
-    1. Träffat SL/TP baserat på den senaste candlens high/low, ELLER
-    2. Legat öppna längre än max_hold_minutes (settings.SYMBOLS[symbol]) -
-       stängs då till candlens close-pris med outcome 'EXPIRED', oavsett
-       SL/TP. Det här är scalping-designens svar på "en trade ska ej vara
-       aktiv jätte länge": en hård tidsgräns istället för att låta trades
-       flyta obestämt.
+    Går igenom öppna paper trades FÖR GIVEN SYMBOL, i tre steg per trade:
+    1. Breakeven-stop: flytta SL till entry+buffert om traden redan gått
+       tillräckligt i rätt riktning (se _maybe_move_to_breakeven).
+    2. Kolla om candlens high/low träffar (det ev. uppdaterade) SL eller TP.
+    3. Om varken SL eller TP nåtts och max_hold_minutes överskridits: stäng
+       ändå till candlens close-pris med outcome 'EXPIRED'.
 
     symbol är obligatoriskt - annars skulle t.ex. BTCUSD:s candle kunna
     trigga SL/TP på en öppen XAUUSD-position (helt olika prisskalor).
@@ -145,12 +193,17 @@ def monitor_open_trades(latest_candle: dict, symbol: str) -> list[dict]:
 
     closed = []
     for trade in get_open_trades(symbol=symbol):
+        trade = _maybe_move_to_breakeven(trade, latest_candle["high"], latest_candle["low"], cfg)
+
         hit = _check_sl_tp_hit(trade, latest_candle["high"], latest_candle["low"])
         if hit == "TP":
             closed.append(close_trade(trade, trade["take_profit"], "WIN"))
             continue
         if hit == "SL":
-            closed.append(close_trade(trade, trade["stop_loss"], "LOSS"))
+            # Efter breakeven-flytt är SL >= entry (BUY) eller <= entry (SELL),
+            # så en "SL-träff" här är i praktiken en liten vinst, inte en förlust.
+            outcome = "WIN" if trade.get("breakeven_moved") else "LOSS"
+            closed.append(close_trade(trade, trade["stop_loss"], outcome))
             continue
 
         if max_hold_minutes is not None:
