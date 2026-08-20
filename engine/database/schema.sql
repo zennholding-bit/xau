@@ -168,7 +168,9 @@ create table if not exists signals (
     tp_model                     text,
     position_size                numeric,             -- i den enhet symbolen handlas i (oz, BTC, etc)
     position_size_unit           text,                -- 'oz','BTC',...
-    risk_amount_sek               numeric
+    risk_amount_sek               numeric,
+    leverage                     numeric,             -- hävstång använd vid beräkningen (t.ex. 20 för 1:20)
+    margin_required               numeric             -- marginal som skulle krävas hos brokern för denna storlek
 );
 create index if not exists idx_signals_created on signals (created_at desc);
 create index if not exists idx_signals_status on signals (status);

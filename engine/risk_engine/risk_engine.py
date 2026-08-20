@@ -76,3 +76,37 @@ def calculate_position_size(account_balance: float, risk_pct: float,
         return {"size": 0.0, "risk_amount_sek": 0.0}
     size = risk_amount_sek / risk_per_unit
     return {"size": round(size, 6), "risk_amount_sek": round(risk_amount_sek, 2)}
+
+
+def calculate_required_margin(size: float, entry_price: float, leverage: float) -> float:
+    """Marginal som skulle krävas hos brokern för att öppna en position av
+    given storlek, givet hävstång. Samma prisenhet som resten av systemet
+    använder för 'SEK' (dvs ingen FX-konvertering görs - konsekvent med hur
+    risk_amount_sek redan räknas i entry_price:s egen valuta)."""
+    if leverage <= 0:
+        return float("inf")
+    return (size * entry_price) / leverage
+
+
+def cap_size_by_margin(size: float, entry_price: float, leverage: float,
+                        account_balance: float, max_margin_pct: float) -> dict:
+    """
+    Skalar ner en risk-baserad positionsstorlek om den skulle kräva mer
+    marginal än vad kontot rimligen bör binda upp i en enda trade (annars
+    kan systemet föreslå positioner som vore omöjliga att faktiskt öppna
+    hos en riktig broker med den hävstången, eller som omedelbart skulle
+    äta upp för stor andel av ett litet konto).
+
+    Returnerar {"size": justerad storlek, "margin_required": faktisk
+    marginal efter ev. neddragning, "capped": bool om storleken justerades}.
+    """
+    margin_budget = account_balance * max_margin_pct
+    margin_required = calculate_required_margin(size, entry_price, leverage)
+
+    if margin_required <= margin_budget or margin_required <= 0:
+        return {"size": size, "margin_required": round(margin_required, 2), "capped": False}
+
+    scale = margin_budget / margin_required
+    adjusted_size = size * scale
+    adjusted_margin = calculate_required_margin(adjusted_size, entry_price, leverage)
+    return {"size": round(adjusted_size, 6), "margin_required": round(adjusted_margin, 2), "capped": True}

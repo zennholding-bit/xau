@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from engine.config.settings import settings
-from engine.risk_engine.risk_engine import atr_based_sltp, structure_based_sltp, calculate_position_size
+from engine.risk_engine.risk_engine import atr_based_sltp, structure_based_sltp, calculate_position_size, cap_size_by_margin
 
 # Vikter för hur delscoren kombineras till final_score.
 # Tekniskt väger tyngst tills fundamental/makro/nyheter är på plats,
@@ -174,6 +174,24 @@ def build_signal(
 
     sizing = calculate_position_size(account_balance, cfg["max_risk_pct"], current_price, sltp.stop_loss)
 
+    # Marginal-koll (2026-08-20): den risk-baserade storleken kan i teorin
+    # kräva mer marginal än vad kontot borde binda upp i en enda trade,
+    # särskilt på ett litet konto (5000 SEK) med låg hävstång (BTC 1:2).
+    # Skalar ner storleken om så behövs, så den alltid är öppningsbar på
+    # riktigt hos brokern med den hävstången.
+    leverage = cfg.get("leverage", 1)
+    max_margin_pct = cfg.get("max_margin_pct_per_trade", 1.0)
+    margin_result = cap_size_by_margin(
+        sizing["size"], current_price, leverage, account_balance, max_margin_pct
+    )
+    if margin_result["capped"]:
+        # Storleken justerades -> risk_amount_sek måste räknas om till vad
+        # den FAKTISKA (nedskalade) storleken riskerar, annars skulle den
+        # visade risken vara högre än vad som verkligen står på spel.
+        risk_per_unit = abs(current_price - sltp.stop_loss)
+        sizing["size"] = margin_result["size"]
+        sizing["risk_amount_sek"] = round(margin_result["size"] * risk_per_unit, 2)
+
     signal["entry"] = round(current_price, 2)
     signal["stop_loss"] = round(sltp.stop_loss, 2)
     signal["take_profit"] = round(sltp.take_profit, 2)
@@ -181,6 +199,8 @@ def build_signal(
     signal["sl_model"] = sltp.sl_model
     signal["tp_model"] = sltp.tp_model
     signal["volatility"] = atr
+    signal["leverage"] = leverage
+    signal["margin_required"] = margin_result["margin_required"]
     signal["short_explanation"] = (
         f"{decision} - final score {final_score:.2f}, confidence {confidence:.0f}%. "
         f"Baserat huvudsakligen på teknisk analys (fundamental/makro/nyheter ej "
@@ -193,7 +213,9 @@ def build_signal(
         f"news_score={scores.news_score:.3f} (quality={scores.data_quality.get('news','missing')}), "
         f"cross_market_score={scores.cross_market_score:.3f} (quality={scores.data_quality.get('cross_market','missing')}). "
         f"Vikter använda (renormaliserade efter datatillgänglighet): {weights_used}. "
-        f"SL/TP-modell: {sltp.sl_model}/{sltp.tp_model} (sl_atr_mult={cfg['sl_atr_mult']}, rr_target={cfg['rr_target']})."
+        f"SL/TP-modell: {sltp.sl_model}/{sltp.tp_model} (sl_atr_mult={cfg['sl_atr_mult']}, rr_target={cfg['rr_target']}). "
+        f"Hävstång {leverage}:1, marginal krävd {margin_result['margin_required']:.2f}"
+        f"{' (storlek nedskalad pga marginalgräns)' if margin_result['capped'] else ''}."
     )
     signal["position_size"] = sizing["size"]
     signal["position_size_unit"] = cfg["unit_label"]

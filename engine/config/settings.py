@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     # --- Trading / risk ---
-    STARTING_BALANCE_SEK: float = 100_000.0
+    STARTING_BALANCE_SEK: float = 5_000.0
     MAX_RISK_PER_TRADE_PCT: float = 0.5  # % av kontot per trade
 
     # --- Signal thresholds & risk, per symbol ---
@@ -63,6 +63,16 @@ class Settings(BaseSettings):
             # först röra sig i vinst.
             "breakeven_trigger_r": 0.5,
             "breakeven_buffer_r": 0.1,
+            # Hävstång & marginal (2026-08-20): matchar IC Markets EU-reglerade
+            # gräns för guld (CySEC/ESMA). Om ditt konto ligger under en
+            # offshore-enhet kan verklig hävstång vara mycket högre - satt
+            # konservativt/EU-standard tills motsatsen bekräftats.
+            "leverage": 20,
+            # En enskild trade får max använda denna andel av kontosaldot i
+            # marginal - risk-baserad storlek skalas ner om den skulle kräva
+            # mer, så systemet aldrig föreslår en position som vore omöjlig
+            # att öppna på riktigt hos brokern.
+            "max_margin_pct_per_trade": 0.5,
         },
         "BTCUSD": {
             "buy_threshold": 0.08,
@@ -83,6 +93,10 @@ class Settings(BaseSettings):
             "min_confidence_to_trade": 8.0,
             "breakeven_trigger_r": 0.5,
             "breakeven_buffer_r": 0.1,
+            # Krypto har mycket lägre EU-tillåten hävstång än guld (1:2 mot
+            # 1:20) - viktigt att INTE använda samma hävstång för båda.
+            "leverage": 2,
+            "max_margin_pct_per_trade": 0.5,
         },
     }
 
