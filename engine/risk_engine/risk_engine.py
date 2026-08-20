@@ -36,10 +36,14 @@ def atr_based_sltp(entry: float, direction: str, atr: float,
 
 def structure_based_sltp(entry: float, direction: str, support: float | None,
                           resistance: float | None, atr: float,
-                          min_rr: float = 1.5) -> SLTPResult:
+                          min_rr: float = 1.5, max_rr: float = 2.0) -> SLTPResult:
     """
     Placerar SL precis bortom senaste support/resistance (+ liten ATR-buffert)
-    och TP mot nästa strukturella nivå, med minimikrav på risk/reward.
+    och TP mot nästa strukturella nivå, med minimikrav på risk/reward (min_rr)
+    OCH ett tak (max_rr) - annars kan TP skjutas väldigt långt bort om nästa
+    verkliga motstånd/stöd råkar ligga fjärran, vilket gjorde mål orealistiskt
+    avlägsna och sällan nådda (upptäckt 2026-08-20: en trade fick RR 2.68 fast
+    rr_target var satt till 1.5, eftersom max()-logiken saknade ett tak).
     Faller tillbaka till ATR-modellen om support/resistance saknas.
     """
     buffer = atr * 0.25
@@ -48,13 +52,19 @@ def structure_based_sltp(entry: float, direction: str, support: float | None,
             return atr_based_sltp(entry, direction, atr)
         sl = support - buffer
         risk = entry - sl
-        tp = entry + max(risk * min_rr, (resistance - entry) if resistance else risk * min_rr)
+        structure_target = (resistance - entry) if resistance else risk * min_rr
+        target_distance = max(risk * min_rr, structure_target)
+        target_distance = min(target_distance, risk * max_rr)
+        tp = entry + target_distance
     else:
         if resistance is None:
             return atr_based_sltp(entry, direction, atr)
         sl = resistance + buffer
         risk = sl - entry
-        tp = entry - max(risk * min_rr, (entry - support) if support else risk * min_rr)
+        structure_target = (entry - support) if support else risk * min_rr
+        target_distance = max(risk * min_rr, structure_target)
+        target_distance = min(target_distance, risk * max_rr)
+        tp = entry - target_distance
 
     risk = abs(entry - sl)
     reward = abs(tp - entry)

@@ -64,6 +64,12 @@ class Settings(BaseSettings):
             # studs tillbaka stängde traden. Mer avstånd till TP ger riktigt
             # utrymme att springa innan målet nås.
             "rr_target": 1.5,
+            # Tak (2026-08-20) på hur långt strukturmodellen får skjuta TP
+            # även om nästa verkliga motstånd/stöd ligger längre bort - annars
+            # kan mål bli orealistiskt avlägsna (se risk_engine.py:s
+            # structure_based_sltp för bakgrund). 2.0 = TP får max bli dubbelt
+            # så långt bort som SL, aldrig mer.
+            "max_rr_cap": 2.0,
             "timeframe": "5m",
             "unit_label": "oz",
             "use_fundamental_context": True,

@@ -165,7 +165,10 @@ def build_signal(
     # Beräkna SL/TP med båda modellerna (med symbolens egna ATR-multipel/RR-mål),
     # välj den strukturbaserade om den ger rimlig risk/reward (>=1.3), annars
     # fallback till ren ATR-modell.
-    structure_result = structure_based_sltp(current_price, decision, support, resistance, atr)
+    structure_result = structure_based_sltp(
+        current_price, decision, support, resistance, atr,
+        min_rr=cfg["rr_target"], max_rr=cfg.get("max_rr_cap", cfg["rr_target"] * 1.3)
+    )
     if structure_result.risk_reward >= 1.3:
         sltp = structure_result
     else:
