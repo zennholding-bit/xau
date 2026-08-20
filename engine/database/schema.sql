@@ -209,6 +209,8 @@ create table if not exists paper_trades (
     position_size           numeric not null,      -- i lot/oz/BTC beroende på symbol
     position_size_unit       text,                  -- 'oz','BTC',...
     risk_amount_sek         numeric not null,       -- SEK riskerat på traden
+    leverage                 numeric,               -- hävstång använd (t.ex. 20 för 1:20)
+    margin_required           numeric,              -- marginal låst av DENNA trade - summeras över alla OPEN trades för att räkna total marginalanvändning på kontot
     spread_cost              numeric default 0,
     slippage                 numeric default 0,
     commission                numeric default 0,

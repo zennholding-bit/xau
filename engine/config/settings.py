@@ -27,6 +27,15 @@ class Settings(BaseSettings):
     STARTING_BALANCE_SEK: float = 5_000.0
     MAX_RISK_PER_TRADE_PCT: float = 0.5  # % av kontot per trade
 
+    # Total marginal (2026-08-20): en riktig broker delar INTE upp marginal
+    # per symbol - all marginal låst av ALLA öppna positioner (guld + krypto
+    # ihop) dras från samma konto. TOTAL_MARGIN_CAP_PCT sätter ett tak för
+    # hur stor andel av kontosaldot som får vara låst totalt, över alla
+    # symboler, samtidigt. 0.6 = max 60% av saldot i marginal samtidigt,
+    # vilket lämnar god marginal-nivå (margin level) kvar innan IC Markets
+    # 50%-stop-out-gräns skulle kunna nås vid ogynnsam prisrörelse.
+    TOTAL_MARGIN_CAP_PCT: float = 0.6
+
     # --- Signal thresholds & risk, per symbol ---
     # AGGRESSIV SCALP-PROFIL (2026-08-20, andra iterationen): trösklarna sänkta
     # ytterligare rejält (XAU 0.12->0.05, BTC 0.18->0.08) för att trades ska

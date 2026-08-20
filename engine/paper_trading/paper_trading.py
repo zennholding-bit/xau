@@ -7,11 +7,15 @@ broker-anrop görs - LiveBroker existerar inte i denna version (se
 engine/paper_trading/broker_interface.py).
 """
 from __future__ import annotations
+import logging
 from datetime import datetime, timezone
 import pandas as pd
 
 from engine.config.settings import settings
 from engine.database.client import get_db, insert
+from engine.risk_engine.risk_engine import calculate_required_margin
+
+logger = logging.getLogger(__name__)
 
 
 def get_account_balance() -> float:
@@ -34,17 +38,68 @@ def get_open_trades(symbol: str | None = None) -> list[dict]:
     return res.data or []
 
 
+def get_total_open_margin() -> float:
+    """
+    Summerar marginal_required över ALLA öppna trades, oavsett symbol -
+    en riktig broker delar inte upp marginal per instrument, allt dras från
+    samma konto. Används för att avgöra hur mycket marginal-utrymme som
+    faktiskt finns kvar innan en ny trade öppnas.
+    """
+    db = get_db()
+    res = db.table("paper_trades").select("margin_required").eq("outcome", "OPEN").execute()
+    return sum(float(t["margin_required"] or 0) for t in (res.data or []))
+
+
 def open_trade_from_signal(signal: dict) -> dict | None:
-    """Öppnar en paper trade om signalen är kvalificerad (BUY/SELL + tillräcklig confidence).
+    """Öppnar en paper trade om signalen är kvalificerad (BUY/SELL + tillräcklig
+    confidence + tillräckligt marginal-utrymme kvar på kontot totalt).
+
     min_confidence_to_trade läses per symbol från settings.SYMBOLS - INTE en
     global konstant längre, eftersom en hög generell gräns (tidigare 60%)
-    tyst kunde blockera trades även när decide() redan sagt BUY/SELL."""
+    tyst kunde blockera trades även när decide() redan sagt BUY/SELL.
+
+    Total marginal-koll (2026-08-20): innan öppning summeras marginal_required
+    för ALLA redan öppna trades (över alla symboler). Om den nya tradens
+    marginal inte får plats inom TOTAL_MARGIN_CAP_PCT av kontosaldot - efter
+    vad som redan är upptaget - skalas storleken ner, eller avvisas traden
+    helt om det inte finns något utrymme kvar alls. Detta speglar hur en
+    riktig broker fungerar: marginal är en delad, kontobred resurs, inte
+    något varje trade får isolerat för sig själv."""
     if signal["decision"] == "NO_TRADE":
         return None
     cfg = settings.SYMBOLS.get(signal["symbol"], {})
     min_confidence = cfg.get("min_confidence_to_trade", 20.0)
     if signal["confidence"] < min_confidence:
         return None
+
+    size = signal.get("position_size", 0.0)
+    risk_amount_sek = signal.get("risk_amount_sek", 0.0)
+    leverage = signal.get("leverage") or cfg.get("leverage", 1)
+    margin_required = signal.get("margin_required")
+    if margin_required is None:
+        margin_required = calculate_required_margin(size, signal["entry"], leverage)
+
+    account_balance = get_account_balance()
+    existing_margin = get_total_open_margin()
+    margin_budget = account_balance * settings.TOTAL_MARGIN_CAP_PCT
+    remaining_budget = margin_budget - existing_margin
+
+    if remaining_budget <= 0:
+        logger.warning(
+            "Trade avvisad (signal_id=%s, %s): ingen marginal kvar - %s SEK redan upptaget av öppna trades, budget %s SEK.",
+            signal["id"], signal["symbol"], round(existing_margin, 2), round(margin_budget, 2),
+        )
+        return None
+
+    if margin_required > remaining_budget:
+        scale = remaining_budget / margin_required
+        size = size * scale
+        risk_amount_sek = risk_amount_sek * scale
+        margin_required = calculate_required_margin(size, signal["entry"], leverage)
+        logger.info(
+            "Trade nedskalad (signal_id=%s, %s): endast %s SEK marginal-utrymme kvar av %s SEK totalt, storlek skalad ner %.0f%%.",
+            signal["id"], signal["symbol"], round(remaining_budget, 2), round(margin_budget, 2), scale * 100,
+        )
 
     trade = {
         "signal_id": signal["id"],
@@ -54,9 +109,11 @@ def open_trade_from_signal(signal: dict) -> dict | None:
         "entry_price": signal["entry"],
         "stop_loss": signal["stop_loss"],
         "take_profit": signal["take_profit"],
-        "position_size": signal.get("position_size", 0.0),
+        "position_size": round(size, 6),
         "position_size_unit": signal.get("position_size_unit"),
-        "risk_amount_sek": signal.get("risk_amount_sek", 0.0),
+        "risk_amount_sek": round(risk_amount_sek, 2),
+        "leverage": leverage,
+        "margin_required": round(margin_required, 2),
         "outcome": "OPEN",
     }
     saved = insert("paper_trades", [trade])
@@ -65,7 +122,7 @@ def open_trade_from_signal(signal: dict) -> dict | None:
             "trade_id": saved[0]["id"],
             "event_type": "OPENED",
             "price": signal["entry"],
-            "details": {"signal_id": signal["id"], "confidence": signal["confidence"]},
+            "details": {"signal_id": signal["id"], "confidence": signal["confidence"], "margin_required": round(margin_required, 2)},
         }])
     return saved[0] if saved else None
 
