@@ -20,7 +20,7 @@ export default function StatChip({ icon, value, label, accent }: Props) {
       </div>
       <div className="min-w-0 flex items-baseline gap-2">
         <span className="text-xl font-bold text-white tabular leading-none">{value}</span>
-        <span className="text-[13px] text-white/60 truncate">{label}</span>
+        <span className="text-[14px] text-white/60 truncate">{label}</span>
       </div>
     </div>
   );

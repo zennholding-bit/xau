@@ -165,11 +165,11 @@ export default function DashboardPage() {
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 shrink-0">
             <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-3">
               <div className="tabular text-2xl font-bold text-white">{kpis.tradesTaken}</div>
-              <div className="text-[13px] text-neutral mt-1">Trades taken totalt</div>
+              <div className="text-[14px] text-neutral mt-1">Trades taken totalt</div>
             </div>
             <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-3">
               <div className="tabular text-2xl font-bold text-white">{kpis.totalSignals}</div>
-              <div className="text-[13px] text-neutral mt-1">Signaler genererade</div>
+              <div className="text-[14px] text-neutral mt-1">Signaler genererade</div>
             </div>
           </section>
 
