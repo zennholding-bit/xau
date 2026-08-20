@@ -109,20 +109,9 @@ export default function DashboardPage() {
   return (
     <main className="min-h-screen px-4 md:px-8 py-6 max-w-[1700px] mx-auto">
       {/* Header */}
-      <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-lg bg-gold-500/10 flex items-center justify-center">
-            <span className="tabular text-gold-400 font-bold text-base">Au</span>
-          </div>
-          <div>
-            <h1 className="text-3xl font-black tracking-tight text-white">XAU Signal Terminal</h1>
-            <p className="text-[11px] text-neutral mt-0.5">Paper trading · ingen riktig handel</p>
-          </div>
-        </div>
-        <div className="flex items-center gap-3">
-          <LiveIndicator lastUpdated={lastUpdated} />
-          <DateFilter value={range} onChange={setRange} />
-        </div>
+      <header className="flex items-center justify-end gap-3 mb-6">
+        <LiveIndicator lastUpdated={lastUpdated} />
+        <DateFilter value={range} onChange={setRange} />
       </header>
 
       {error && (
