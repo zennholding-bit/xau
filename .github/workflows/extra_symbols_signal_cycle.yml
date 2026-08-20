@@ -1,0 +1,56 @@
+name: Extra Symbols Signal Cycle (NDX/SPX/WTI)
+
+# Kör signal-cykeln för Nasdaq-100 (NDX), S&P 500 (SPX) och råolja (WTI) i
+# sekvens, var 15:e minut. 15 min matchar deras candle-timeframe (15m) i
+# settings.py - samma lärdom som togs efter BTC-buggen (att polla oftare
+# än candle-upplösningen bara hämtar samma candle upprepade gånger).
+#
+# API-budget: 96 anrop/dag per symbol * 3 = 288/dag. Plus XAUUSD (288/dag på
+# 5 min) + ~11/dag daglig cross-market-ingestion = ~587 av Twelve Datas
+# 800 anrop/dag - god marginal kvar.
+on:
+  schedule:
+    - cron: "*/15 * * * *"
+  workflow_dispatch: {}
+
+jobs:
+  run-extra-symbols-signal-cycle:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: "pip"
+
+      - name: Installera dependencies
+        run: pip install -r requirements.txt
+
+      - name: Kör NDX signal-cykeln
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          AI_PROVIDER: "none"
+        run: python -m engine.signal_engine.run_signal_cycle NDX
+
+      - name: Kör SPX signal-cykeln
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          AI_PROVIDER: "none"
+        run: python -m engine.signal_engine.run_signal_cycle SPX
+
+      - name: Kör WTI signal-cykeln
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          TWELVE_DATA_API_KEY: ${{ secrets.TWELVE_DATA_API_KEY }}
+          FRED_API_KEY: ${{ secrets.FRED_API_KEY }}
+          AI_PROVIDER: "none"
+        run: python -m engine.signal_engine.run_signal_cycle WTI

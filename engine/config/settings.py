@@ -83,27 +83,72 @@ class Settings(BaseSettings):
             # att öppna på riktigt hos brokern.
             "max_margin_pct_per_trade": 0.5,
         },
-        "BTCUSD": {
-            "buy_threshold": 0.08,
-            "sell_threshold": -0.08,
-            "range_buy_threshold": 0.08,
-            "range_sell_threshold": -0.08,
+        # Nya instrument (2026-08-20): NDX (Nasdaq-100), SPX (S&P 500), WTI
+        # (råolja). VIKTIGT samma varning som gällde BTC: use_fundamental_
+        # context=False för alla tre, eftersom makro-tolkningen i
+        # context_builder.py är kalibrerad specifikt för HUR DET PÅVERKAR
+        # GULD ("sjunkande realränta -> stärker guldets attraktivitet") -
+        # den logiken stämmer inte rakt av för aktieindex (mer komplex
+        # ränte-relation) eller olja (drivs mer av utbud/efterfrågan/OPEC än
+        # av räntor). Alla tre kör därför bara på technical_score tills
+        # tillgångsspecifik makro-kalibrering byggs.
+        #
+        # Trösklar/SL satta KONSERVATIVT och OKALIBRERAT (0.15, bredare SL än
+        # guldets 0.05/0.4) - vi har ingen observerad score-fördelning för
+        # dessa än. Justera efter några dagars drift, precis som XAUUSD:s
+        # 0.28->0.05 togs fram genom att titta på faktisk data.
+        #
+        # Hävstång matchar IC Markets EU-reglerade gränser: index 1:5,
+        # råvaror (olja) 1:10.
+        "NDX": {
+            "buy_threshold": 0.15,
+            "sell_threshold": -0.15,
+            "range_buy_threshold": 0.15,
+            "range_sell_threshold": -0.15,
             "max_risk_pct": 0.15,
             "sl_atr_mult": 0.6,
             "rr_target": 1.0,
-            "timeframe": "5m",
-            "unit_label": "BTC",
-            # False: makro/nyhets-tolkningen i context_builder.py är kalibrerad
-            # för HUR DET PÅVERKAR GULD (t.ex. "sjunkande realränta -> stärker
-            # guldets attraktivitet"). Samma logik gäller inte BTC. Tills en
-            # egen BTC-kalibrerad modell finns körs BTC bara på technical_score.
+            "timeframe": "15m",
+            "unit_label": "kontrakt",
             "use_fundamental_context": False,
-            "min_confidence_to_trade": 8.0,
+            "min_confidence_to_trade": 10.0,
             "breakeven_trigger_r": 0.5,
             "breakeven_buffer_r": 0.1,
-            # Krypto har mycket lägre EU-tillåten hävstång än guld (1:2 mot
-            # 1:20) - viktigt att INTE använda samma hävstång för båda.
-            "leverage": 2,
+            "leverage": 5,
+            "max_margin_pct_per_trade": 0.5,
+        },
+        "SPX": {
+            "buy_threshold": 0.15,
+            "sell_threshold": -0.15,
+            "range_buy_threshold": 0.15,
+            "range_sell_threshold": -0.15,
+            "max_risk_pct": 0.15,
+            "sl_atr_mult": 0.6,
+            "rr_target": 1.0,
+            "timeframe": "15m",
+            "unit_label": "kontrakt",
+            "use_fundamental_context": False,
+            "min_confidence_to_trade": 10.0,
+            "breakeven_trigger_r": 0.5,
+            "breakeven_buffer_r": 0.1,
+            "leverage": 5,
+            "max_margin_pct_per_trade": 0.5,
+        },
+        "WTI": {
+            "buy_threshold": 0.15,
+            "sell_threshold": -0.15,
+            "range_buy_threshold": 0.15,
+            "range_sell_threshold": -0.15,
+            "max_risk_pct": 0.15,
+            "sl_atr_mult": 0.6,
+            "rr_target": 1.0,
+            "timeframe": "15m",
+            "unit_label": "fat",
+            "use_fundamental_context": False,
+            "min_confidence_to_trade": 10.0,
+            "breakeven_trigger_r": 0.5,
+            "breakeven_buffer_r": 0.1,
+            "leverage": 10,
             "max_margin_pct_per_trade": 0.5,
         },
     }
