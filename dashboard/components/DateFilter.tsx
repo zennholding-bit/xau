@@ -19,7 +19,7 @@ export default function DateFilter({
   onChange: (v: DateRangeKey) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 bg-base-900 rounded-2xl p-1">
+    <div className="flex items-center gap-1 bg-base-900 border border-white/[0.06] rounded-2xl p-1">
       {OPTIONS.map((opt) => (
         <button
           key={opt.key}

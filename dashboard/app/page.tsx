@@ -21,8 +21,6 @@ import { AccountState, PaperTrade, Signal } from "@/lib/supabase";
 
 const SEK = new Intl.NumberFormat("sv-SE", { maximumFractionDigits: 0 });
 
-// Ikoner hålls som små inline-SVG:er (ingen extra icon-dependency) - i samma
-// stil som de fyrkantiga färgade ikon-chipsen i referensdashboarden.
 const CheckIcon = () => (
   <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5">
     <path d="M20 6 9 17l-5-5" strokeLinecap="round" strokeLinejoin="round" />
@@ -59,10 +57,6 @@ export default function DashboardPage() {
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
 
-  // Auto-refresh: dashboarden hämtade tidigare bara EN gång vid sidladdning
-  // och uppdaterades sen aldrig. Pollar nu var 15:e sekund istället - lätt
-  // anrop (bara läsning från Supabase), så det finns ingen anledning att
-  // vänta på en manuell F5 längre.
   useEffect(() => {
     let cancelled = false;
     const start = rangeToStartDate(range);
@@ -103,7 +97,7 @@ export default function DashboardPage() {
   const balanceSpark = useMemo(() => equity.map((p) => p.balance), [equity]);
   const winRateSpark = useMemo(() => computeWinRateSeries(trades), [trades]);
 
-  const latestSignals = signals.slice(0, 20);
+  const latestSignals = signals.slice(0, 30);
   const tradeBySignalId = useMemo(() => {
     const map = new Map<number, PaperTrade>();
     for (const t of trades) {
@@ -113,7 +107,7 @@ export default function DashboardPage() {
   }, [trades]);
 
   return (
-    <main className="min-h-screen px-4 md:px-8 py-6 max-w-[1600px] mx-auto">
+    <main className="min-h-screen px-4 md:px-8 py-6 max-w-[1700px] mx-auto">
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
@@ -138,59 +132,69 @@ export default function DashboardPage() {
         </div>
       )}
 
-      {/* Hero-kort: Balance / Total P&L / Win Rate - med sparklines, som referensens toppkort */}
-      <section className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-3">
-        <KpiCard label="Balance" value={`${SEK.format(kpis.balance)} SEK`} sparkline={balanceSpark} />
-        <KpiCard
-          label="Total P&L"
-          value={`${kpis.totalPnl >= 0 ? "+" : ""}${SEK.format(kpis.totalPnl)} SEK`}
-          tone={kpis.totalPnl >= 0 ? "positive" : "negative"}
-          sparkline={balanceSpark}
-          badge={kpis.totalPnl >= 0 ? "↗ Vinst" : "↘ Förlust"}
-        />
-        <KpiCard
-          label="Win Rate"
-          value={`${kpis.winRate.toFixed(1)}%`}
-          tone={kpis.winRate >= 50 ? "positive" : "neutral"}
-          sparkline={winRateSpark}
-        />
-      </section>
+      {/* Huvudlayout: vänster = all statistik + equity-kurva, höger = Latest
+          Signals som en panel som sträcker sig lika högt som hela vänster-
+          kolumnen (grid items-stretch gör att höger kolumn matchar vänsterns
+          totala höjd, från toppraden av kort ner till equity-kortets botten). */}
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_400px] gap-4 items-stretch">
+        {/* VÄNSTER KOLUMN */}
+        <div className="flex flex-col gap-3 min-w-0">
+          {/* Hero-kort med sparklines */}
+          <section className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <KpiCard label="Balance" value={`${SEK.format(kpis.balance)} SEK`} sparkline={balanceSpark} />
+            <KpiCard
+              label="Total P&L"
+              value={`${kpis.totalPnl >= 0 ? "+" : ""}${SEK.format(kpis.totalPnl)} SEK`}
+              tone={kpis.totalPnl >= 0 ? "positive" : "negative"}
+              sparkline={balanceSpark}
+              badge={kpis.totalPnl >= 0 ? "↗ Vinst" : "↘ Förlust"}
+            />
+            <KpiCard
+              label="Win Rate"
+              value={`${kpis.winRate.toFixed(1)}%`}
+              tone={kpis.winRate >= 50 ? "positive" : "neutral"}
+              sparkline={winRateSpark}
+            />
+          </section>
 
-      {/* Sekundära stora stat-kort, som referensens "Average order value" / "Average products per order" */}
-      <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
-        <div className="bg-base-900 rounded-2xl px-5 py-4">
-          <div className="tabular text-3xl font-bold text-white">{kpis.tradesTaken}</div>
-          <div className="text-[13px] text-neutral mt-1">Trades taken totalt</div>
+          {/* Sekundära stora stat-kort */}
+          <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="bg-base-900 border border-white/[0.06] rounded-2xl px-5 py-4">
+              <div className="tabular text-3xl font-bold text-white">{kpis.tradesTaken}</div>
+              <div className="text-[13px] text-neutral mt-1">Trades taken totalt</div>
+            </div>
+            <div className="bg-base-900 border border-white/[0.06] rounded-2xl px-5 py-4">
+              <div className="tabular text-3xl font-bold text-white">{kpis.totalSignals}</div>
+              <div className="text-[13px] text-neutral mt-1">Signaler genererade</div>
+            </div>
+          </section>
+
+          {/* Ikon-chip-rad: Won / Lost / Pending */}
+          <section className="flex flex-col sm:flex-row gap-3">
+            <StatChip icon={<CheckIcon />} value={kpis.winningTrades} label="Won" accent="buy" />
+            <StatChip icon={<XIcon />} value={kpis.losingTrades} label="Lost" accent="sell" />
+            <StatChip icon={<ClockIcon />} value={kpis.pendingTrades} label="Pending" accent="gold" />
+          </section>
+
+          {/* Equity curve */}
+          <div className="bg-base-900 border border-white/[0.06] rounded-2xl p-5 flex-1 flex flex-col min-h-[320px]">
+            <h2 className="flex items-center gap-2 text-xs uppercase tracking-wider text-neutral font-semibold mb-4">
+              <SignalIcon />
+              Equity Curve
+            </h2>
+            <div className="flex-1">
+              <EquityChart data={equity} />
+            </div>
+          </div>
         </div>
-        <div className="bg-base-900 rounded-2xl px-5 py-4">
-          <div className="tabular text-3xl font-bold text-white">{kpis.totalSignals}</div>
-          <div className="text-[13px] text-neutral mt-1">Signaler genererade</div>
-        </div>
-      </section>
 
-      {/* Ikon-chip-rad: Won / Lost / Pending - som referensens Products/Categories/Low stock/Customers-rad */}
-      <section className="flex flex-col sm:flex-row gap-3 mb-6">
-        <StatChip icon={<CheckIcon />} value={kpis.winningTrades} label="Won" accent="buy" />
-        <StatChip icon={<XIcon />} value={kpis.losingTrades} label="Lost" accent="sell" />
-        <StatChip icon={<ClockIcon />} value={kpis.pendingTrades} label="Pending" accent="gold" />
-      </section>
-
-      {/* Equity + Latest signals */}
-      <section className="grid grid-cols-1 xl:grid-cols-[1fr_380px] gap-4">
-        <div className="bg-base-900 rounded-2xl p-5">
-          <h2 className="flex items-center gap-2 text-xs uppercase tracking-wider text-neutral font-semibold mb-4">
-            <SignalIcon />
-            Equity Curve
-          </h2>
-          <EquityChart data={equity} />
-        </div>
-
-        <div className="bg-base-900 rounded-2xl p-5 flex flex-col">
-          <h2 className="flex items-center gap-2 text-xs uppercase tracking-wider text-neutral font-semibold mb-2">
+        {/* HÖGER KOLUMN: Latest Signals, full höjd */}
+        <div className="bg-base-900 border border-white/[0.06] rounded-2xl p-5 flex flex-col min-h-0">
+          <h2 className="flex items-center gap-2 text-xs uppercase tracking-wider text-neutral font-semibold mb-2 shrink-0">
             <ListIcon />
             Latest Signals
           </h2>
-          <div className="flex flex-col overflow-y-auto max-h-[520px] pr-1">
+          <div className="flex flex-col overflow-y-auto flex-1 pr-1">
             {loading && <p className="text-neutral text-sm px-2 py-3">Laddar...</p>}
             {!loading && latestSignals.length === 0 && (
               <p className="text-neutral text-sm px-2 py-3">
@@ -202,7 +206,7 @@ export default function DashboardPage() {
             ))}
           </div>
         </div>
-      </section>
+      </div>
 
       <footer className="mt-8 text-center text-[11px] text-neutral">
         Data uppdateras automatiskt. Ingen riktig handel sker i detta system.
