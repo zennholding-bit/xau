@@ -7,10 +7,10 @@ module.exports = {
         // Terminal-botten: rent svart som referensen (Uncle Bud-dashboarden)
         base: {
           950: "#000000",
-          900: "#121212",
-          800: "#1A1A1A",
-          700: "#242424",
-          600: "#333333",
+          900: "#000000",
+          800: "#0D0D0D",
+          700: "#1A1A1A",
+          600: "#262626",
         },
         // Guld - temat är bokstavligen XAU (guld), så accenten är motiverad av ämnet
         gold: {

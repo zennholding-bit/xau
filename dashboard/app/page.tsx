@@ -111,12 +111,12 @@ export default function DashboardPage() {
       {/* Header */}
       <header className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-xl bg-gold-500/10 flex items-center justify-center">
+          <div className="w-10 h-10 rounded-lg bg-gold-500/10 flex items-center justify-center">
             <span className="tabular text-gold-400 font-bold text-base">Au</span>
           </div>
           <div>
-            <h1 className="text-xl font-bold tracking-tight text-white">XAU Signal Terminal</h1>
-            <p className="text-[11px] text-neutral -mt-0.5">Paper trading · ingen riktig handel</p>
+            <h1 className="text-3xl font-black tracking-tight text-white">XAU Signal Terminal</h1>
+            <p className="text-[11px] text-neutral mt-0.5">Paper trading · ingen riktig handel</p>
           </div>
         </div>
         <div className="flex items-center gap-3">
@@ -126,7 +126,7 @@ export default function DashboardPage() {
       </header>
 
       {error && (
-        <div className="mb-6 rounded-2xl bg-sell/[0.08] px-4 py-3 text-sm text-sell">
+        <div className="mb-6 rounded-lg bg-sell/[0.08] px-4 py-3 text-sm text-sell">
           Kunde inte hämta data: {error}. Kontrollera att NEXT_PUBLIC_SUPABASE_URL och
           NEXT_PUBLIC_SUPABASE_ANON_KEY är korrekt satta i Vercel.
         </div>
@@ -159,11 +159,11 @@ export default function DashboardPage() {
 
           {/* Sekundära stora stat-kort */}
           <section className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div className="bg-base-900 border border-white/[0.06] rounded-2xl px-5 py-4">
+            <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-4">
               <div className="tabular text-3xl font-bold text-white">{kpis.tradesTaken}</div>
               <div className="text-[13px] text-neutral mt-1">Trades taken totalt</div>
             </div>
-            <div className="bg-base-900 border border-white/[0.06] rounded-2xl px-5 py-4">
+            <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-4">
               <div className="tabular text-3xl font-bold text-white">{kpis.totalSignals}</div>
               <div className="text-[13px] text-neutral mt-1">Signaler genererade</div>
             </div>
@@ -177,10 +177,10 @@ export default function DashboardPage() {
           </section>
 
           {/* Equity curve */}
-          <div className="bg-base-900 border border-white/[0.06] rounded-2xl p-5 flex-1 flex flex-col min-h-[320px]">
-            <h2 className="flex items-center gap-2 text-xs uppercase tracking-wider text-neutral font-semibold mb-4">
-              <SignalIcon />
+          <div className="bg-base-900 border border-white/10 rounded-lg p-5 flex-1 flex flex-col min-h-[320px]">
+            <h2 className="flex items-center justify-between text-[15px] font-bold text-white mb-4">
               Equity Curve
+              <span className="text-neutral"><SignalIcon /></span>
             </h2>
             <div className="flex-1">
               <EquityChart data={equity} />
@@ -189,10 +189,10 @@ export default function DashboardPage() {
         </div>
 
         {/* HÖGER KOLUMN: Latest Signals, full höjd */}
-        <div className="bg-base-900 border border-white/[0.06] rounded-2xl p-5 flex flex-col min-h-0">
-          <h2 className="flex items-center gap-2 text-xs uppercase tracking-wider text-neutral font-semibold mb-2 shrink-0">
-            <ListIcon />
+        <div className="bg-base-900 border border-white/10 rounded-lg p-5 flex flex-col min-h-0">
+          <h2 className="flex items-center justify-between text-[15px] font-bold text-white mb-3 shrink-0">
             Latest Signals
+            <span className="text-neutral"><ListIcon /></span>
           </h2>
           <div className="flex flex-col overflow-y-auto flex-1 pr-1">
             {loading && <p className="text-neutral text-sm px-2 py-3">Laddar...</p>}

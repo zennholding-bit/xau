@@ -31,7 +31,7 @@ export default function SignalCard({ signal, trade }: { signal: Signal; trade?: 
       : `Entry ${signal.entry?.toFixed(2)} · SL ${signal.stop_loss?.toFixed(2)} · TP ${signal.take_profit?.toFixed(2)}`;
 
   return (
-    <div className="flex items-center gap-3 px-2 py-2.5 rounded-xl hover:bg-white/[0.03] transition-colors">
+    <div className="flex items-center gap-3 px-2 py-2.5 rounded-lg hover:bg-white/[0.03] transition-colors">
       <div className={`w-9 h-9 rounded-lg flex items-center justify-center shrink-0 font-bold text-sm ${chip.cls}`}>
         {chip.label}
       </div>

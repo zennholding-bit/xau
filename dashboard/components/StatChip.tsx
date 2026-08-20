@@ -14,8 +14,8 @@ const ACCENT_CLASSES: Record<Props["accent"], string> = {
 
 export default function StatChip({ icon, value, label, accent }: Props) {
   return (
-    <div className="flex items-center gap-3 bg-base-900 border border-white/[0.06] rounded-2xl px-4 py-3 flex-1 min-w-0">
-      <div className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${ACCENT_CLASSES[accent]}`}>
+    <div className="flex items-center gap-3 bg-base-900 border border-white/10 rounded-lg px-4 py-3 flex-1 min-w-0">
+      <div className={`w-10 h-10 rounded-lg flex items-center justify-center shrink-0 ${ACCENT_CLASSES[accent]}`}>
         {icon}
       </div>
       <div className="min-w-0">

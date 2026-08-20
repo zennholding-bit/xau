@@ -20,7 +20,7 @@ export default function LiveIndicator({ lastUpdated }: { lastUpdated: Date | nul
   }, [lastUpdated]);
 
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-neutral px-2.5 py-1.5 rounded-2xl bg-base-900 border border-white/[0.06]">
+    <div className="flex items-center gap-1.5 text-[11px] text-neutral px-2.5 py-1.5 rounded-lg bg-base-900 border border-white/10">
       <span className="relative flex h-2 w-2">
         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-buy opacity-60" />
         <span className="relative inline-flex rounded-full h-2 w-2 bg-buy" />

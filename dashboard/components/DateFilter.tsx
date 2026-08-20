@@ -19,12 +19,12 @@ export default function DateFilter({
   onChange: (v: DateRangeKey) => void;
 }) {
   return (
-    <div className="flex items-center gap-1 bg-base-900 border border-white/[0.06] rounded-2xl p-1">
+    <div className="flex items-center gap-1 bg-base-900 border border-white/10 rounded-lg p-1">
       {OPTIONS.map((opt) => (
         <button
           key={opt.key}
           onClick={() => onChange(opt.key)}
-          className={`px-3 py-1.5 text-xs font-semibold tracking-wide rounded-xl transition-colors ${
+          className={`px-3 py-1.5 text-xs font-semibold tracking-wide rounded-lg transition-colors ${
             value === opt.key
               ? "bg-gold-500/15 text-gold-400"
               : "text-neutral hover:text-white/80"

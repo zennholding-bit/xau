@@ -15,7 +15,7 @@ export default function KpiCard({ label, value, tone = "neutral", hint, sparklin
   const sparkColor = tone === "positive" ? "#34D399" : tone === "negative" ? "#F43F5E" : "#5B8DEF";
 
   return (
-    <div className="bg-base-900 border border-white/[0.06] rounded-2xl px-5 py-4 flex flex-col gap-2 min-w-0">
+    <div className="bg-base-900 border border-white/10 rounded-lg px-5 py-4 flex flex-col gap-2 min-w-0">
       <div className="flex items-start justify-between gap-2">
         <span className="text-[11px] uppercase tracking-wider text-neutral font-medium">{label}</span>
         {sparkline && sparkline.length > 1 && <Sparkline data={sparkline} color={sparkColor} />}
