@@ -7,6 +7,11 @@ const DATE_FMT = new Intl.DateTimeFormat("sv-SE", {
   minute: "2-digit",
 });
 
+// 1 pip på XAUUSD = $0.01 (den vanligaste konventionen på MT4/MT5, matchar
+// "Digits: 2" i kontospecifikationen). Om fler symboler läggs till senare
+// behöver den här bli symbol-medveten istället för hårdkodad.
+const PIP_SIZE = 0.01;
+
 function directionPill(direction: "BUY" | "SELL") {
   return direction === "BUY"
     ? { label: "LONG", cls: "bg-buy/15 text-buy" }
@@ -27,6 +32,12 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
   const exitDate = trade.exit_time ? DATE_FMT.format(new Date(trade.exit_time)) : null;
   const dateRange = exitDate ? `${entryDate} – ${exitDate}` : `Öppnad ${entryDate}`;
 
+  // Pips realiserade (stängd trade) eller pips kvar till TP (öppen trade)
+  const realizedPips = trade.exit_price != null
+    ? Math.abs(trade.exit_price - trade.entry_price) / PIP_SIZE
+    : null;
+  const targetPips = Math.abs(trade.take_profit - trade.entry_price) / PIP_SIZE;
+
   return (
     <div className="flex flex-col gap-1.5 px-2 py-3.5 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
       <div className="flex items-center justify-between gap-2">
@@ -38,7 +49,10 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
         </div>
         <div className={`text-right shrink-0 tabular ${resultColor}`}>
           {isOpen ? (
-            <div className="text-[13px] font-semibold">PENDING</div>
+            <div className="flex items-baseline gap-2 justify-end">
+              <span className="text-[13px] font-semibold">PENDING</span>
+              <span className="text-[11px] text-neutral font-medium">mål {targetPips.toFixed(0)} pips</span>
+            </div>
           ) : (
             <div className="flex items-baseline gap-2">
               <span
@@ -48,6 +62,7 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
               >
                 {isWin ? "WON" : "LOST"}
               </span>
+              <span className="text-[12px] text-neutral font-medium">{realizedPips?.toFixed(1)} pips</span>
               <span className="text-[13px] font-medium">
                 {(trade.pnl_pct ?? 0) >= 0 ? "+" : ""}
                 {trade.pnl_pct?.toFixed(2)}%
