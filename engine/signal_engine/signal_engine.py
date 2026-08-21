@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from engine.config.settings import settings
-from engine.risk_engine.risk_engine import atr_based_sltp, structure_based_sltp, calculate_position_size, cap_size_by_margin, clamp_tp_to_pip_range
+from engine.risk_engine.risk_engine import atr_based_sltp, structure_based_sltp, calculate_position_size, cap_size_by_margin, clamp_tp_to_pip_range, round_to_lot_size
 
 # Vikter för hur delscoren kombineras till final_score.
 # Tekniskt väger tyngst tills fundamental/makro/nyheter är på plats,
@@ -227,6 +227,23 @@ def build_signal(
         sizing["size"] = margin_result["size"]
         sizing["risk_amount_sek"] = round(margin_result["size"] * risk_per_unit, 2)
 
+    # Lot-avrundning (2026-08-21): rå storleken (oz) avrundas till närmaste
+    # handelsbara lot-steg och klipps till [min_lot, max_lot] - matchar vad
+    # en riktig broker (IC Markets) faktiskt accepterar. risk_amount_sek
+    # räknas om EN GÅNG TILL efter avrundningen, eftersom lot-steget kan
+    # ändra storleken något jämfört med den exakta risk-baserade siffran.
+    lot_result = round_to_lot_size(
+        sizing["size"],
+        contract_size=cfg.get("contract_size", 100),
+        lot_step=cfg.get("lot_step", 0.01),
+        min_lot=cfg.get("min_lot", 0.01),
+        max_lot=cfg.get("max_lot", 5.0),
+    )
+    risk_per_unit = abs(current_price - sltp.stop_loss)
+    sizing["size"] = lot_result["size_units"]
+    sizing["risk_amount_sek"] = round(lot_result["size_units"] * risk_per_unit, 2)
+    sizing["lots"] = lot_result["lots"]
+
     signal["entry"] = round(current_price, 2)
     signal["stop_loss"] = round(sltp.stop_loss, 2)
     signal["take_profit"] = round(sltp.take_profit, 2)
@@ -236,6 +253,7 @@ def build_signal(
     signal["volatility"] = atr
     signal["leverage"] = leverage
     signal["margin_required"] = margin_result["margin_required"]
+    signal["lots"] = lot_result["lots"]
     signal["short_explanation"] = (
         f"{decision} - final score {final_score:.2f}, confidence {confidence:.0f}%. "
         f"Baserat huvudsakligen på teknisk analys (fundamental/makro/nyheter ej "

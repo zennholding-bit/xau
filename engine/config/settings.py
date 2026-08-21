@@ -84,6 +84,16 @@ class Settings(BaseSettings):
             "max_structure_sl_atr_mult": 2.5,
             "timeframe": "5m",
             "unit_label": "oz",
+            # Lot-gränser (2026-08-21) - matchar IC Markets kontraktsspec
+            # (Contract size: 100 XAU per lot, se skärmdumpen från kontot).
+            # MT5 tillåter oftast bara steg om 0.01 lot, med ett minimum på
+            # 0.01 - utan detta skulle systemet kunna föreslå en storlek som
+            # inte går att lägga på riktigt hos brokern (för liten, eller i
+            # ett steg brokern inte accepterar).
+            "contract_size": 100,
+            "lot_step": 0.01,
+            "min_lot": 0.01,
+            "max_lot": 5.0,
             "use_fundamental_context": True,
             "min_confidence_to_trade": 15.0,
             # Breakeven-stop (2026-08-20): när en trade gått breakeven_trigger_r

@@ -100,6 +100,22 @@ def clamp_tp_to_pip_range(entry: float, direction: str, take_profit: float, stop
     return SLTPResult(stop_loss, new_tp, rr, sl_model="unchanged", tp_model="pip_clamped")
 
 
+def round_to_lot_size(size_units: float, contract_size: float, lot_step: float,
+                       min_lot: float, max_lot: float) -> dict:
+    """
+    Konverterar en råstorlek (t.ex. oz) till lot, avrundar till närmaste
+    lot_step (MT5 tillåter oftast bara steg om 0.01), och klipper till
+    [min_lot, max_lot]. Utan detta kan systemet föreslå storlekar som inte
+    går att lägga på riktigt hos en broker - för litet, eller i ett steg
+    som inte accepteras.
+    """
+    raw_lots = size_units / contract_size
+    rounded_lots = round(raw_lots / lot_step) * lot_step
+    clamped_lots = min(max(rounded_lots, min_lot), max_lot)
+    clamped_lots = round(clamped_lots, 2)
+    return {"lots": clamped_lots, "size_units": clamped_lots * contract_size}
+
+
 def calculate_position_size(account_balance: float, risk_pct: float,
                              entry: float, stop_loss: float) -> dict:
     """

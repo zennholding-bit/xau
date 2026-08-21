@@ -170,7 +170,8 @@ create table if not exists signals (
     position_size_unit           text,                -- 'oz','BTC',...
     risk_amount_sek               numeric,
     leverage                     numeric,             -- hävstång använd vid beräkningen (t.ex. 20 för 1:20)
-    margin_required               numeric             -- marginal som skulle krävas hos brokern för denna storlek
+    margin_required               numeric,            -- marginal som skulle krävas hos brokern för denna storlek
+    lots                          numeric             -- position_size omräknat till lot (MT5-standard, avrundat till lot_step)
 );
 create index if not exists idx_signals_created on signals (created_at desc);
 create index if not exists idx_signals_status on signals (status);
@@ -211,6 +212,7 @@ create table if not exists paper_trades (
     risk_amount_sek         numeric not null,       -- SEK riskerat på traden
     leverage                 numeric,               -- hävstång använd (t.ex. 20 för 1:20)
     margin_required           numeric,              -- marginal låst av DENNA trade - summeras över alla OPEN trades för att räkna total marginalanvändning på kontot
+    lots                       numeric             -- position_size omräknat till lot (MT5-standard)
     spread_cost              numeric default 0,
     slippage                 numeric default 0,
     commission                numeric default 0,

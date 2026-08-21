@@ -111,6 +111,7 @@ def open_trade_from_signal(signal: dict) -> dict | None:
         "take_profit": signal["take_profit"],
         "position_size": round(size, 6),
         "position_size_unit": signal.get("position_size_unit"),
+        "lots": signal.get("lots"),
         "risk_amount_sek": round(risk_amount_sek, 2),
         "leverage": leverage,
         "margin_required": round(margin_required, 2),
