@@ -95,7 +95,14 @@ class Settings(BaseSettings):
             # 1.5R till TP (47% av vägen, inte 100% som tidigare vid 0.5R/1R)
             # - fortfarande ett skydd, men mycket senare och närmare målet,
             # så färre vinster stryps i förtid.
-            "breakeven_trigger_r": 0.7,
+            # Höjd (2026-08-20, tredje justeringen) från 0.7 -> 0.9: data
+            # visade att även 0.7R fortfarande fångade 66% av alla vinster i
+            # förtid (snitt 1.62 SEK mot 12.90 SEK för de som nådde full TP).
+            # Misstänkt orsak: med en tight SL (0.4xATR) når priset 0.7R ofta
+            # bara av vanligt marknadsbrus, inte en riktig rörelse. 0.9R
+            # triggar nu vid 60% av vägen till TP (var 47% vid 0.7R) - mer
+            # utrymme för traden att faktiskt nå TP innan skyddet låser in.
+            "breakeven_trigger_r": 0.9,
             "breakeven_buffer_r": 0.1,
             # Hävstång & marginal (2026-08-20): matchar IC Markets EU-reglerade
             # gräns för guld (CySEC/ESMA). Om ditt konto ligger under en
