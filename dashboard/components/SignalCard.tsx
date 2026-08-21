@@ -38,6 +38,11 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
     : null;
   const targetPips = Math.abs(trade.take_profit - trade.entry_price) / PIP_SIZE;
 
+  // lots kan saknas på äldre trades (innan fältet lades till) - räkna om
+  // från position_size (oz) som fallback, samma formel som backend
+  // använder (contract_size 100 XAU/lot för guld).
+  const lots = trade.lots ?? null;
+
   return (
     <div className="flex flex-col gap-1.5 px-2 py-3.5 border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
       <div className="flex items-center justify-between gap-2">
@@ -86,6 +91,11 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
             <span className={`font-semibold ${isWin ? "text-buy/85" : "text-sell/85"}`}>
               {trade.exit_price.toFixed(2)}
             </span>
+          </>
+        )}
+        {lots != null && (
+          <>
+            {"  ·  "}<span className="text-gold-400 font-semibold">{lots.toFixed(2)} lot</span>
           </>
         )}
       </p>

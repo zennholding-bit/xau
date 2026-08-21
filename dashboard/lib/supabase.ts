@@ -49,6 +49,7 @@ export type PaperTrade = {
   pnl_sek: number | null;
   pnl_pct: number | null;
   r_multiple: number | null;
+  lots: number | null;
   outcome: "WIN" | "LOSS" | "BREAKEVEN" | "EXPIRED" | "CANCELLED" | "OPEN";
   account_balance_after: number | null;
 };
