@@ -70,13 +70,15 @@ class Settings(BaseSettings):
             # structure_based_sltp för bakgrund). 2.0 = TP får max bli dubbelt
             # så långt bort som SL, aldrig mer.
             "max_rr_cap": 2.0,
-            # Absolut pip-gräns (2026-08-20) på TP - visade sig nödvändigt
-            # eftersom max_rr-taket ovan inte räckte när SL i sig var brett
-            # (kunde fortfarande ge mål på 1000+ pips). 1 pip = $0.01 för
-            # guld (Digits: 2, matchar dashboardens beräkning).
+            # 2026-08-21 (uppdaterad): pip_size används fortfarande av
+            # dashboarden och säkerhetsnätet nedan. De TIGHTA gränserna
+            # (60-300) togs bort som primär mekanism - de körde över
+            # modellernas egna, redan konsekventa RR-förhållanden och gav
+            # RR mellan 0.26 och 5.01 på olika trades istället för ett
+            # stabilt förhållande. Nu bara ett extremt vitt säkerhetsnät.
             "pip_size": 0.01,
-            "min_tp_pips": 60,
-            "max_tp_pips": 300,
+            "min_tp_pips_safety_net": 15,
+            "max_tp_pips_safety_net": 1000,
             # Avvisar strukturbaserad SL om den är bredare än detta ×ATR -
             # se signal_engine.py för fullständig förklaring av varför.
             "max_structure_sl_atr_mult": 2.5,

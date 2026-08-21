@@ -189,14 +189,22 @@ def build_signal(
         sltp = atr_based_sltp(current_price, decision, atr,
                                sl_atr_mult=cfg["sl_atr_mult"], rr_target=cfg["rr_target"])
 
-    # Absolut pip-tak (2026-08-20): kvarstår som ett sista skyddsnät för
-    # sällsynta extremfall, men ska normalt sett inte behöva göra något nu
-    # när grundorsaken (orimligt bred strukturell SL) är åtgärdad ovan.
+    # Absolut pip-tak (2026-08-21, uppdaterad): SÄNKT prioritet - upptäckte att
+    # det tighta 60-300-fönstret körde över modellernas EGNA, redan korrekta
+    # RR-förhållanden (som skalar med varje trades egen risk). Resultat: RR
+    # kunde hamna mellan 0.26 och 5.01 på olika trades, trots att både
+    # atr_based_sltp (alltid exakt rr_target) och structure_based_sltp
+    # (min_rr till max_rr) redan garanterar ett konsekvent förhållande var
+    # för sig. Nu är gränserna vidgade rejält (15-1000 pips) - ska i praktiken
+    # ALDRIG slå till under normal drift, bara fånga upp genuint trasiga
+    # extremfall (som det ursprungliga 1600-pips-scenariot). Modellernas egna
+    # RR-gränser gör nu det dagliga jobbet istället, vilket ger konsekventa,
+    # förutsägbara vinst/förlust-kvoter per trade.
     sltp = clamp_tp_to_pip_range(
         current_price, decision, sltp.take_profit, sltp.stop_loss,
         pip_size=cfg.get("pip_size", 0.01),
-        min_tp_pips=cfg.get("min_tp_pips", 60),
-        max_tp_pips=cfg.get("max_tp_pips", 300),
+        min_tp_pips=cfg.get("min_tp_pips_safety_net", 15),
+        max_tp_pips=cfg.get("max_tp_pips_safety_net", 1000),
     )
 
     sizing = calculate_position_size(account_balance, cfg["max_risk_pct"], current_price, sltp.stop_loss)
