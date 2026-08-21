@@ -185,7 +185,14 @@ def close_trade(trade: dict, exit_price: float, outcome: str, mfe: float = 0.0, 
 
 def _update_stop_loss(trade_id: int, new_sl: float) -> None:
     db = get_db()
-    db.table("paper_trades").update({"stop_loss": round(new_sl, 5)}).eq("id", trade_id).execute()
+    # BUGG FIXAD (2026-08-20): sparade tidigare bara stop_loss, aldrig
+    # breakeven_moved=true - vilket gjorde att en trade som triggade
+    # breakeven i en cykel men träffade sitt (flyttade) SL i en SENARE cykel
+    # skulle läsas som breakeven_moved=false från databasen och riskera bli
+    # felaktigt stämplad LOSS trots positivt pris. Hittills har inga trades
+    # faktiskt blivit felmärkta (trigger+träff hann alltid ske inom samma
+    # cykel), men det var en latent bugg som kunde slagit till när som helst.
+    db.table("paper_trades").update({"stop_loss": round(new_sl, 5), "breakeven_moved": True}).eq("id", trade_id).execute()
     insert("trade_events", [{
         "trade_id": trade_id,
         "event_type": "BREAKEVEN_MOVED",
