@@ -171,7 +171,8 @@ create table if not exists signals (
     risk_amount_sek               numeric,
     leverage                     numeric,             -- hävstång använd vid beräkningen (t.ex. 20 för 1:20)
     margin_required               numeric,            -- marginal som skulle krävas hos brokern för denna storlek
-    lots                          numeric             -- position_size omräknat till lot (MT5-standard, avrundat till lot_step)
+    lots                          numeric,            -- position_size omräknat till lot (MT5-standard, avrundat till lot_step)
+    legs                          jsonb               -- planerade TP-ben (TP1/TP2/TP3) för delvis vinsthemtagning, se signal_engine.py split_into_tp_legs
 );
 create index if not exists idx_signals_created on signals (created_at desc);
 create index if not exists idx_signals_status on signals (status);
