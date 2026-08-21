@@ -103,7 +103,12 @@ class Settings(BaseSettings):
             # triggar nu vid 60% av vägen till TP (var 47% vid 0.7R) - mer
             # utrymme för traden att faktiskt nå TP innan skyddet låser in.
             "breakeven_trigger_r": 0.9,
-            "breakeven_buffer_r": 0.1,
+            # Höjd (2026-08-20) från 0.1R -> 0.3R på användarens begäran -
+            # ger en större garanterad vinst när breakeven-skyddet triggar
+            # (tidigare snitt +1.62 SEK per räddad trade, nu ~3x så mycket).
+            # Avvägning: SL flyttas nu längre bort från entry vid trigger,
+            # vilket kräver en något större rörelse tillbaka för att träffas.
+            "breakeven_buffer_r": 0.3,
             # Hävstång & marginal (2026-08-20): matchar IC Markets EU-reglerade
             # gräns för guld (CySEC/ESMA). Om ditt konto ligger under en
             # offshore-enhet kan verklig hävstång vara mycket högre - satt
