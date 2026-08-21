@@ -51,6 +51,11 @@ export default function SignalCard({ trade, signal }: { trade: PaperTrade; signa
           <span className={`text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded ${dirPill.cls}`}>
             {dirPill.label}
           </span>
+          {(trade.leg_count ?? 1) > 1 && (
+            <span className="text-[10px] font-bold tracking-wide px-1.5 py-0.5 rounded bg-chip-blue/15 text-chip-blue">
+              TP{trade.leg ?? 1}
+            </span>
+          )}
         </div>
         <div className={`text-right shrink-0 tabular ${resultColor}`}>
           {isOpen ? (

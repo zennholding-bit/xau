@@ -94,6 +94,22 @@ class Settings(BaseSettings):
             "lot_step": 0.01,
             "min_lot": 0.01,
             "max_lot": 5.0,
+            # Delvis vinsthemtagning (2026-08-21) - TP1/TP2/TP3-stil, samma
+            # teknik proffs-tradare använder (och som vi såg i skärmdumpar
+            # från en Telegram-grupp): dela positionen i flera delar, ta hem
+            # vinst stegvis istället för allt-eller-inget vid ett enda mål.
+            # level_r = avstånd i R-multiplar från entry, fraction = andel av
+            # ORIGINALPOSITIONEN som stängs vid den nivån. Måste summera till
+            # 1.0. Så fort TP1 (första benet) träffas flyttas SL på
+            # kvarvarande ben automatiskt till breakeven - en "risk-free
+            # runner". Om positionen är för liten för att delas upp (varje
+            # ben måste bli minst min_lot) faller systemet tillbaka till en
+            # enda TP-nivå (som innan).
+            "tp_legs": [
+                {"level_r": 0.75, "fraction": 0.4},
+                {"level_r": 1.5, "fraction": 0.3},
+                {"level_r": 2.25, "fraction": 0.3},
+            ],
             "use_fundamental_context": True,
             "min_confidence_to_trade": 15.0,
             # Breakeven-stop (2026-08-20): när en trade gått breakeven_trigger_r

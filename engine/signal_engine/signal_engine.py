@@ -16,7 +16,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 
 from engine.config.settings import settings
-from engine.risk_engine.risk_engine import atr_based_sltp, structure_based_sltp, calculate_position_size, cap_size_by_margin, clamp_tp_to_pip_range, round_to_lot_size
+from engine.risk_engine.risk_engine import atr_based_sltp, structure_based_sltp, calculate_position_size, cap_size_by_margin, clamp_tp_to_pip_range, round_to_lot_size, split_into_tp_legs
 
 # Vikter för hur delscoren kombineras till final_score.
 # Tekniskt väger tyngst tills fundamental/makro/nyheter är på plats,
@@ -244,6 +244,18 @@ def build_signal(
     sizing["risk_amount_sek"] = round(lot_result["size_units"] * risk_per_unit, 2)
     sizing["lots"] = lot_result["lots"]
 
+    # Delvis vinsthemtagning (2026-08-21): dela positionen i TP1/TP2/TP3-ben
+    # istället för en enda TP. Faller tillbaka till en nivå om positionen är
+    # för liten för att delas meningsfullt (se split_into_tp_legs).
+    legs = split_into_tp_legs(
+        current_price, decision, sltp.stop_loss, lot_result["lots"],
+        tp_legs=cfg.get("tp_legs", []),
+        contract_size=cfg.get("contract_size", 100),
+        lot_step=cfg.get("lot_step", 0.01),
+        min_lot=cfg.get("min_lot", 0.01),
+        fallback_take_profit=sltp.take_profit,
+    )
+
     signal["entry"] = round(current_price, 2)
     signal["stop_loss"] = round(sltp.stop_loss, 2)
     signal["take_profit"] = round(sltp.take_profit, 2)
@@ -254,6 +266,7 @@ def build_signal(
     signal["leverage"] = leverage
     signal["margin_required"] = margin_result["margin_required"]
     signal["lots"] = lot_result["lots"]
+    signal["legs"] = legs
     signal["short_explanation"] = (
         f"{decision} - final score {final_score:.2f}, confidence {confidence:.0f}%. "
         f"Baserat huvudsakligen på teknisk analys (fundamental/makro/nyheter ej "

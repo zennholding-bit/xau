@@ -18,6 +18,44 @@ class SLTPResult:
     tp_model: str
 
 
+def split_into_tp_legs(entry: float, direction: str, stop_loss: float, total_lots: float,
+                        tp_legs: list[dict], contract_size: float, lot_step: float,
+                        min_lot: float, fallback_take_profit: float) -> list[dict]:
+    """
+    Delar en position i flera 'ben' med olika TP-nivåer (TP1/TP2/TP3-stil)
+    för delvis vinsthemtagning, istället för allt-eller-inget vid en enda TP.
+    Varje ben får sin egen storlek (lots) baserat på 'fraction' i tp_legs.
+
+    Om positionen är för liten för att delas (något ben skulle bli mindre än
+    min_lot efter avrundning) faller den tillbaka till EN enda TP-nivå
+    (fallback_take_profit, den ursprungliga rr_target-nivån) - annars skulle
+    små positioner kunna generera ben på 0 lot, vilket vore meningslöst.
+    """
+    risk = abs(entry - stop_loss)
+    sign = 1 if direction == "BUY" else -1
+
+    legs = []
+    for leg_cfg in tp_legs:
+        leg_lots_raw = total_lots * leg_cfg["fraction"]
+        leg_rounded = round(leg_lots_raw / lot_step) * lot_step
+        legs.append({
+            "level_r": leg_cfg["level_r"],
+            "take_profit": round(entry + sign * risk * leg_cfg["level_r"], 2),
+            "lots": round(leg_rounded, 2),
+        })
+
+    if any(leg["lots"] < min_lot for leg in legs) or len(legs) == 0:
+        # Fallback: en enda TP-nivå med hela positionen, som innan
+        single_lots = round(total_lots / lot_step) * lot_step
+        return [{
+            "level_r": None,
+            "take_profit": round(fallback_take_profit, 2),
+            "lots": round(single_lots, 2),
+        }]
+
+    return legs
+
+
 def atr_based_sltp(entry: float, direction: str, atr: float,
                     sl_atr_mult: float = 1.5, rr_target: float = 2.0) -> SLTPResult:
     """

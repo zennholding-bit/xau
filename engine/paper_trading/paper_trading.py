@@ -13,7 +13,7 @@ import pandas as pd
 
 from engine.config.settings import settings
 from engine.database.client import get_db, insert
-from engine.risk_engine.risk_engine import calculate_required_margin
+from engine.risk_engine.risk_engine import calculate_required_margin, split_into_tp_legs
 
 logger = logging.getLogger(__name__)
 
@@ -91,6 +91,7 @@ def open_trade_from_signal(signal: dict) -> dict | None:
         )
         return None
 
+    scale = 1.0
     if margin_required > remaining_budget:
         scale = remaining_budget / margin_required
         size = size * scale
@@ -101,30 +102,60 @@ def open_trade_from_signal(signal: dict) -> dict | None:
             signal["id"], signal["symbol"], round(remaining_budget, 2), round(margin_budget, 2), scale * 100,
         )
 
-    trade = {
-        "signal_id": signal["id"],
-        "symbol": signal["symbol"],
-        "direction": signal["decision"],
-        "entry_time": datetime.now(timezone.utc).isoformat(),
-        "entry_price": signal["entry"],
-        "stop_loss": signal["stop_loss"],
-        "take_profit": signal["take_profit"],
-        "position_size": round(size, 6),
-        "position_size_unit": signal.get("position_size_unit"),
-        "lots": signal.get("lots"),
-        "risk_amount_sek": round(risk_amount_sek, 2),
-        "leverage": leverage,
-        "margin_required": round(margin_required, 2),
-        "outcome": "OPEN",
-    }
-    saved = insert("paper_trades", [trade])
+    # Delvis vinsthemtagning (2026-08-21): signal["legs"] beräknades i
+    # signal_engine.py FÖRE marginal-kollen ovan. Om marginalen skalade ner
+    # storleken (scale < 1.0) måste benen räknas om från grunden med den
+    # FAKTISKA, nedskalade lot-storleken - annars skulle benens totala
+    # storlek inte stämma med vad marginal-budgeten faktiskt tillåter.
+    legs = signal.get("legs") or [{"level_r": None, "take_profit": signal["take_profit"], "lots": signal.get("lots", 0.0)}]
+    if scale < 1.0:
+        legs = split_into_tp_legs(
+            signal["entry"], signal["decision"], signal["stop_loss"],
+            total_lots=signal.get("lots", 0.0) * scale,
+            tp_legs=cfg.get("tp_legs", []),
+            contract_size=cfg.get("contract_size", 100),
+            lot_step=cfg.get("lot_step", 0.01),
+            min_lot=cfg.get("min_lot", 0.01),
+            fallback_take_profit=signal["take_profit"],
+        )
+
+    contract_size = cfg.get("contract_size", 100)
+    entry_time = datetime.now(timezone.utc).isoformat()
+    leg_count = len(legs)
+    trades = []
+    for i, leg in enumerate(legs, start=1):
+        leg_size_units = leg["lots"] * contract_size
+        leg_risk_per_unit = abs(signal["entry"] - signal["stop_loss"])
+        trades.append({
+            "signal_id": signal["id"],
+            "symbol": signal["symbol"],
+            "direction": signal["decision"],
+            "entry_time": entry_time,
+            "entry_price": signal["entry"],
+            "stop_loss": signal["stop_loss"],
+            "take_profit": leg["take_profit"],
+            "position_size": round(leg_size_units, 6),
+            "position_size_unit": signal.get("position_size_unit"),
+            "lots": leg["lots"],
+            "risk_amount_sek": round(leg_size_units * leg_risk_per_unit, 2),
+            "leverage": leverage,
+            "margin_required": round(calculate_required_margin(leg_size_units, signal["entry"], leverage), 2),
+            "leg": i,
+            "leg_count": leg_count,
+            "outcome": "OPEN",
+        })
+
+    saved = insert("paper_trades", trades)
     if saved:
         insert("trade_events", [{
-            "trade_id": saved[0]["id"],
+            "trade_id": t["id"],
             "event_type": "OPENED",
             "price": signal["entry"],
-            "details": {"signal_id": signal["id"], "confidence": signal["confidence"], "margin_required": round(margin_required, 2)},
-        }])
+            "details": {
+                "signal_id": signal["id"], "confidence": signal["confidence"],
+                "margin_required": t["margin_required"], "leg": t.get("leg", 1), "leg_count": leg_count,
+            },
+        } for t in saved])
     return saved[0] if saved else None
 
 
@@ -240,12 +271,45 @@ def _maybe_move_to_breakeven(trade: dict, high: float, low: float, cfg: dict) ->
     return trade
 
 
+def _protect_sibling_legs_after_tp1(trade: dict, cfg: dict) -> None:
+    """
+    När TP1 (första benet av en delad position) träffas: flytta SL på de
+    KVARVARANDE benen (TP2/TP3) till breakeven omedelbart - oavsett om deras
+    egen pris-baserade breakeven_trigger_r nåtts än. Det är poängen med
+    "risk-free runner"-tekniken: så fort en del av vinsten är hemtagen, ska
+    resten av positionen inte längre kunna bli en förlust.
+    """
+    if trade.get("leg_count", 1) <= 1 or trade.get("leg") != 1:
+        return
+    signal_id = trade.get("signal_id")
+    if signal_id is None:
+        return
+
+    db = get_db()
+    res = db.table("paper_trades").select("*").eq("signal_id", signal_id).eq("outcome", "OPEN").execute()
+    buffer_r = cfg.get("breakeven_buffer_r", 0.0)
+    for sibling in (res.data or []):
+        entry = sibling["entry_price"]
+        risk_per_unit = abs(entry - trade["stop_loss"])  # ursprungligt SL-avstånd (delat av alla ben)
+        if risk_per_unit <= 0 or sibling.get("breakeven_moved"):
+            continue
+        direction = sibling["direction"]
+        new_sl = entry + buffer_r * risk_per_unit if direction == "BUY" else entry - buffer_r * risk_per_unit
+        _update_stop_loss(sibling["id"], new_sl)
+
+
 def monitor_open_trades(latest_candle: dict, symbol: str) -> list[dict]:
     """
     Går igenom öppna paper trades FÖR GIVEN SYMBOL, i två steg per trade:
     1. Breakeven-stop: flytta SL till entry+buffert om traden redan gått
        tillräckligt i rätt riktning (se _maybe_move_to_breakeven).
     2. Kolla om candlens high/low träffar (det ev. uppdaterade) SL eller TP.
+
+    Delvis vinsthemtagning (2026-08-21): om en trade har flera ben (leg_count
+    > 1) och ben 1 (TP1) träffas, skyddas de kvarvarande benen automatiskt
+    genom att deras SL flyttas till breakeven direkt (se
+    _protect_sibling_legs_after_tp1) - oberoende av deras egen pris-baserade
+    breakeven-trigger.
 
     INGEN tidsgräns längre (2026-08-20, borttagen på användarens begäran) -
     en trade förblir öppen tills SL eller TP faktiskt nås, precis som på ett
@@ -265,6 +329,7 @@ def monitor_open_trades(latest_candle: dict, symbol: str) -> list[dict]:
         hit = _check_sl_tp_hit(trade, latest_candle["high"], latest_candle["low"])
         if hit == "TP":
             closed.append(close_trade(trade, trade["take_profit"], "WIN"))
+            _protect_sibling_legs_after_tp1(trade, cfg)
             continue
         if hit == "SL":
             # Efter breakeven-flytt är SL >= entry (BUY) eller <= entry (SELL),

@@ -212,7 +212,9 @@ create table if not exists paper_trades (
     risk_amount_sek         numeric not null,       -- SEK riskerat på traden
     leverage                 numeric,               -- hävstång använd (t.ex. 20 för 1:20)
     margin_required           numeric,              -- marginal låst av DENNA trade - summeras över alla OPEN trades för att räkna total marginalanvändning på kontot
-    lots                       numeric             -- position_size omräknat till lot (MT5-standard)
+    lots                       numeric,             -- position_size omräknat till lot (MT5-standard)
+    leg                         integer default 1,   -- 1=TP1, 2=TP2, 3=TP3 (delvis vinsthemtagning) - flera rader delar signal_id
+    leg_count                   integer default 1    -- totalt antal ben för denna trade (så man vet om det var uppdelat eller ej)
     spread_cost              numeric default 0,
     slippage                 numeric default 0,
     commission                numeric default 0,
