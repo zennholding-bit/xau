@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     # --- Trading / risk ---
-    STARTING_BALANCE_SEK: float = 5_000.0
+    STARTING_BALANCE_SEK: float = 100_000.0
     MAX_RISK_PER_TRADE_PCT: float = 0.5  # % av kontot per trade
 
     # Total marginal (2026-08-20): en riktig broker delar INTE upp marginal
